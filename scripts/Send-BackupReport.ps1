@@ -191,10 +191,7 @@ function Send-BackupReport {
             $retryCount++
             Write-Log "Tentativa $retryCount de $maxRetries..."
             
-            # Desabilita verificação de certificado SSL se necessário (apenas desenvolvimento)
-            # [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-            
-            # Configura TLS 1.2
+            # Configura TLS 1.2 (requerido para comunicação segura)
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             
             $response = Invoke-RestMethod -Uri $ApiUrl -Method Post -Headers $headers -Body $payload -TimeoutSec 30

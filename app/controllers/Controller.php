@@ -81,26 +81,34 @@ class Controller
     }
 
     /**
+     * Cache para dados de entrada
+     */
+    private static ?array $inputCache = null;
+
+    /**
      * Retorna dados do POST
      */
     protected function input(string $key = null, mixed $default = null): mixed
     {
-        $input = array_merge($_GET, $_POST);
-        
-        // Tenta pegar JSON do body
-        $json = file_get_contents('php://input');
-        if ($json) {
-            $decoded = json_decode($json, true);
-            if (is_array($decoded)) {
-                $input = array_merge($input, $decoded);
+        // Usa cache se já foi lido
+        if (self::$inputCache === null) {
+            self::$inputCache = array_merge($_GET, $_POST);
+            
+            // Tenta pegar JSON do body
+            $json = file_get_contents('php://input');
+            if ($json) {
+                $decoded = json_decode($json, true);
+                if (is_array($decoded)) {
+                    self::$inputCache = array_merge(self::$inputCache, $decoded);
+                }
             }
         }
         
         if ($key === null) {
-            return $input;
+            return self::$inputCache;
         }
         
-        return $input[$key] ?? $default;
+        return self::$inputCache[$key] ?? $default;
     }
 
     /**
