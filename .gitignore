@@ -1,0 +1,33 @@
+# Environment files
+.env
+
+# Composer dependencies
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Cache
+/cache/
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# PHP errors
+php_errors.log
+
+# Session files
+/sessions/
