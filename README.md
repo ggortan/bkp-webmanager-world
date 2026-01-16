@@ -65,18 +65,17 @@ O **Backup WebManager** é uma aplicação web corporativa que centraliza o moni
 
 ## 🛠 Stack Tecnológica
 
-- **Backend**: PHP 8+ (puro, sem frameworks)
+- **Backend**: PHP 8+ (puro, sem frameworks, sem dependências externas)
 - **Frontend**: HTML5, Bootstrap 5.3, JavaScript
 - **Banco de Dados**: MySQL 8.0
 - **Autenticação**: Microsoft Entra (Azure AD) via OAuth 2.0
-- **Dependências**: Composer (PHPMailer, JWT)
+- **SMTP**: Implementação nativa de SMTP
 
 ## 📦 Requisitos
 
 - PHP 8.0 ou superior
 - MySQL 8.0 ou superior
 - Apache com mod_rewrite ou Nginx
-- Composer
 - Extensões PHP: PDO, PDO_MySQL, cURL, JSON, mbstring
 
 ## 🚀 Instalação
@@ -88,13 +87,7 @@ git clone https://github.com/seu-usuario/bkp-webmanager-world.git
 cd bkp-webmanager-world
 ```
 
-### 2. Instale as dependências
-
-```bash
-composer install
-```
-
-### 3. Configure o ambiente
+### 2. Configure o ambiente
 
 ```bash
 cp .env.example .env
@@ -102,13 +95,13 @@ cp .env.example .env
 
 Edite o arquivo `.env` com suas configurações.
 
-### 4. Crie o banco de dados
+### 3. Crie o banco de dados
 
 ```bash
 mysql -u root -p < database/migrations/001_create_tables.sql
 ```
 
-### 5. Configure o servidor web
+### 4. Configure o servidor web
 
 #### Apache
 
@@ -308,6 +301,7 @@ bkp-webmanager-world/
 │   ├── services/        # Serviços (Auth, Email, Backup)
 │   ├── middleware/      # Middlewares (Auth, CSRF, API)
 │   ├── helpers/         # Funções auxiliares
+│   ├── libraries/       # Bibliotecas nativas (JWT, SMTP)
 │   └── views/           # Templates HTML
 │       ├── layouts/     # Layout principal
 │       ├── auth/        # Páginas de autenticação
@@ -328,7 +322,6 @@ bkp-webmanager-world/
 ├── scripts/             # Scripts PowerShell
 ├── docs/                # Documentação adicional
 ├── .env.example         # Exemplo de configuração
-├── composer.json        # Dependências PHP
 └── README.md            # Este arquivo
 ```
 

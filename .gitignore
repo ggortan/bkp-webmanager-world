@@ -1,9 +1,6 @@
 # Environment files
 .env
 
-# Composer dependencies
-/vendor/
-
 # IDE
 .idea/
 .vscode/

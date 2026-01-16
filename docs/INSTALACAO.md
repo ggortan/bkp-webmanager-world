@@ -35,13 +35,7 @@ git clone https://github.com/seu-usuario/bkp-webmanager-world.git
 cd bkp-webmanager-world
 ```
 
-### 2. Instalar Dependências PHP
-
-```bash
-composer install --no-dev --optimize-autoloader
-```
-
-### 3. Configurar Permissões
+### 2. Configurar Permissões
 
 ```bash
 # Linux
@@ -50,7 +44,7 @@ chmod -R 755 /var/www/bkp-webmanager-world
 chmod -R 775 /var/www/bkp-webmanager-world/logs
 ```
 
-### 4. Configurar Ambiente
+### 3. Configurar Ambiente
 
 ```bash
 cp .env.example .env
@@ -94,7 +88,7 @@ SESSION_LIFETIME=120
 SESSION_SECURE=true
 ```
 
-### 5. Criar Banco de Dados
+### 4. Criar Banco de Dados
 
 ```bash
 # Acessar MySQL
@@ -111,7 +105,7 @@ EXIT;
 mysql -u backup_user -p backup_webmanager < database/migrations/001_create_tables.sql
 ```
 
-### 6. Configurar Apache
+### 5. Configurar Apache
 
 Crie um virtual host:
 
@@ -154,7 +148,7 @@ sudo a2enmod rewrite ssl
 sudo systemctl restart apache2
 ```
 
-### 7. Configurar Nginx (Alternativa)
+### 6. Configurar Nginx (Alternativa)
 
 ```bash
 sudo nano /etc/nginx/sites-available/backup-webmanager

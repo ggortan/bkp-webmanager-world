@@ -24,28 +24,26 @@ Env::load(ROOT_PATH);
 
 // Autoload
 spl_autoload_register(function ($class) {
-    // Remove namespace prefix
-    $prefix = 'App\\';
-    $baseDir = ROOT_PATH . '/app/';
+    // Namespaces suportados
+    $namespaces = [
+        'App\\' => 'app/'
+    ];
     
-    $len = strlen($prefix);
-    if (strncmp($prefix, $class, $len) !== 0) {
-        return;
-    }
-    
-    $relativeClass = substr($class, $len);
-    $file = $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
-    
-    if (file_exists($file)) {
-        require $file;
+    foreach ($namespaces as $prefix => $baseDir) {
+        $len = strlen($prefix);
+        if (strncmp($prefix, $class, $len) !== 0) {
+            continue;
+        }
+        
+        $relativeClass = substr($class, $len);
+        $file = ROOT_PATH . '/' . $baseDir . str_replace('\\', '/', $relativeClass) . '.php';
+        
+        if (file_exists($file)) {
+            require $file;
+            return;
+        }
     }
 });
-
-// Carrega autoload do Composer se existir
-$composerAutoload = ROOT_PATH . '/vendor/autoload.php';
-if (file_exists($composerAutoload)) {
-    require $composerAutoload;
-}
 
 // Carrega configuração do banco de dados
 $dbConfig = require ROOT_PATH . '/config/database.php';

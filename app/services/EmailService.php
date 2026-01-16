@@ -54,61 +54,41 @@ class EmailService
     }
 
     /**
-     * Envia e-mail usando PHPMailer (SMTP)
-     */
-    public function sendSmtp(string|array $to, string $subject, string $body, bool $isHtml = true): bool
-    {
-        // Verifica se PHPMailer está disponível
-        if (!class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
-            LogService::warning('email', 'PHPMailer não instalado, usando mail()');
-            return $this->send($to, $subject, $body, $isHtml);
-        }
+ * Envia e-mail usando SMTP nativo
+ */
+public function sendSmtp(string|array $to, string $subject, string $body, bool $isHtml = true): bool
+{
+    try {
+        $smtp = new \App\Libraries\Smtp(
+            $this->config['host'],
+            $this->config['port'],
+            $this->config['username'],
+            $this->config['password'],
+            $this->config['encryption']
+        );
         
-        try {
-            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-            
-            // Configurações do servidor
-            $mail->isSMTP();
-            $mail->Host = $this->config['host'];
-            $mail->SMTPAuth = true;
-            $mail->Username = $this->config['username'];
-            $mail->Password = $this->config['password'];
-            $mail->SMTPSecure = $this->config['encryption'];
-            $mail->Port = $this->config['port'];
-            $mail->CharSet = 'UTF-8';
-            
-            // Remetente
-            $mail->setFrom(
-                $this->config['from']['address'], 
-                $this->config['from']['name']
-            );
-            
-            // Destinatários
-            $recipients = is_array($to) ? $to : [$to];
-            foreach ($recipients as $recipient) {
-                $mail->addAddress($recipient);
-            }
-            
-            // Conteúdo
-            $mail->isHTML($isHtml);
-            $mail->Subject = $subject;
-            $mail->Body = $body;
-            
-            if ($isHtml) {
-                $mail->AltBody = strip_tags($body);
-            }
-            
-            $mail->send();
-            
-            LogService::info('email', 'E-mail SMTP enviado com sucesso', [
-                'to' => $recipients,
-                'subject' => $subject
-            ]);
-            
-            return true;
-            
-        } catch (\PHPMailer\PHPMailer\Exception $e) {
-            LogService::error('email', 'Falha ao enviar e-mail SMTP', [
+        $smtp->connect();
+        
+        $recipients = is_array($to) ? $to : [$to];
+        
+        $smtp->send(
+            $this->config['from']['address'],
+            $recipients,
+            $subject,
+            $body,
+            ['From' => $this->config['from']['name']]
+        );
+        
+        $smtp->disconnect();
+        
+        LogService::info('email', 'E-mail SMTP enviado com sucesso', [
+            'to' => $recipients,
+            'subject' => $subject
+        ]);
+        
+        return true;
+        
+    } catch (\Exception $e) {
                 'error' => $e->getMessage(),
                 'to' => $to,
                 'subject' => $subject
