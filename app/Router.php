@@ -98,6 +98,15 @@ class Router
         $method = $_SERVER['REQUEST_METHOD'];
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         
+        // Remove o prefixo base da aplicação (ex: /world/bkpmng)
+        $appUrl = \Env::get('APP_URL', 'http://localhost');
+        $basePath = parse_url($appUrl, PHP_URL_PATH);
+        
+        // Se a URI começa com o basePath, remove
+        if ($basePath && $basePath !== '/' && strpos($uri, $basePath) === 0) {
+            $uri = substr($uri, strlen($basePath));
+        }
+        
         // Remove trailing slash
         $uri = rtrim($uri, '/') ?: '/';
 

@@ -22,7 +22,9 @@ class Env
         $envFile = rtrim($path, '/') . '/.env';
         
         if (!file_exists($envFile)) {
-            throw new RuntimeException("Arquivo .env não encontrado em: {$envFile}");
+            // Se o arquivo .env não existe, usa as variáveis de ambiente do servidor
+            // ou os valores padrão das configurações
+            return;
         }
 
         $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
