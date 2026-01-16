@@ -19,7 +19,7 @@ class Controller
         $data = array_merge($this->data, $data);
         extract($data);
         
-        $viewPath = dirname(__DIR__, 2) . '/app/views/' . str_replace('.', '/', $view) . '.php';
+        $viewPath = dirname(__DIR__, 2) . '/app/Views/' . str_replace('.', '/', $view) . '.php';
         
         if (!file_exists($viewPath)) {
             throw new \RuntimeException("View não encontrada: {$view}");
@@ -38,7 +38,7 @@ class Controller
         // Captura o conteúdo da view
         ob_start();
         extract($data);
-        $viewPath = dirname(__DIR__, 2) . '/app/views/' . str_replace('.', '/', $view) . '.php';
+        $viewPath = dirname(__DIR__, 2) . '/app/Views/' . str_replace('.', '/', $view) . '.php';
         
         if (!file_exists($viewPath)) {
             throw new \RuntimeException("View não encontrada: {$view}");
@@ -51,7 +51,7 @@ class Controller
         $data['content'] = $content;
         extract($data);
         
-        $layoutPath = dirname(__DIR__, 2) . '/app/views/' . str_replace('.', '/', $layout) . '.php';
+        $layoutPath = dirname(__DIR__, 2) . '/app/Views/' . str_replace('.', '/', $layout) . '.php';
         
         if (!file_exists($layoutPath)) {
             throw new \RuntimeException("Layout não encontrado: {$layout}");

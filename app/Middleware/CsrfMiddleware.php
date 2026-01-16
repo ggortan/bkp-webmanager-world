@@ -42,7 +42,7 @@ class CsrfMiddleware
                     'status' => 419
                 ], JSON_UNESCAPED_UNICODE);
             } else {
-                require dirname(__DIR__, 2) . '/app/views/errors/419.php';
+                require dirname(__DIR__, 2) . '/app/Views/errors/419.php';
             }
             
             exit;

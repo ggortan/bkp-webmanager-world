@@ -85,7 +85,7 @@ class Router
     /**
      * Registra um middleware global
      */
-    public static function middleware(string $name, callable $handler): void
+    public static function middleware(string $name, callable|array $handler): void
     {
         self::$middlewares[$name] = $handler;
     }
@@ -152,7 +152,7 @@ class Router
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['error' => 'Rota não encontrada', 'status' => 404]);
         } else {
-            require dirname(__DIR__) . '/app/views/errors/404.php';
+            require dirname(__DIR__) . '/app/Views/errors/404.php';
         }
     }
 

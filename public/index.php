@@ -99,6 +99,6 @@ try {
         echo $e->getTraceAsString();
         echo '</pre>';
     } else {
-        require ROOT_PATH . '/app/views/errors/500.php';
+        require ROOT_PATH . '/app/Views/errors/500.php';
     }
 }

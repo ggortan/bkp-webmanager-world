@@ -7,6 +7,9 @@ use App\Router;
 use App\Controllers\ApiBackupController;
 use App\Middleware\ApiAuthMiddleware;
 
+// Registra middleware de API ANTES das rotas
+Router::middleware('api_auth', [ApiAuthMiddleware::class, 'handle']);
+
 // Rotas públicas da API
 Router::get('/api/status', [ApiBackupController::class, 'status']);
 
@@ -20,6 +23,3 @@ Router::group(['prefix' => '/api', 'middleware' => ['api_auth']], function () {
     Router::get('/me', [ApiBackupController::class, 'me']);
     
 });
-
-// Registra middleware de API
-Router::middleware('api_auth', [ApiAuthMiddleware::class, 'handle']);

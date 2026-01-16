@@ -14,6 +14,12 @@ use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
 use App\Middleware\RoleMiddleware;
 
+// Registra middlewares ANTES das rotas
+Router::middleware('auth', [AuthMiddleware::class, 'handle']);
+Router::middleware('csrf', [CsrfMiddleware::class, 'handle']);
+Router::middleware('admin', RoleMiddleware::admin());
+Router::middleware('operator', RoleMiddleware::operator());
+
 // Rotas públicas
 Router::get('/login', [AuthController::class, 'login']);
 Router::get('/auth/redirect', [AuthController::class, 'redirectToAzure']);
@@ -61,9 +67,3 @@ Router::group(['middleware' => ['auth', 'csrf']], function () {
     Router::post('/relatorios/enviar-email', [RelatorioController::class, 'enviarEmail'], ['operator']);
     Router::get('/relatorios/exportar-csv', [RelatorioController::class, 'exportarCsv']);
 });
-
-// Registra middlewares
-Router::middleware('auth', [AuthMiddleware::class, 'handle']);
-Router::middleware('csrf', [CsrfMiddleware::class, 'handle']);
-Router::middleware('admin', RoleMiddleware::admin());
-Router::middleware('operator', RoleMiddleware::operator());

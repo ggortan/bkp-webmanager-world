@@ -89,14 +89,15 @@ public function sendSmtp(string|array $to, string $subject, string $body, bool $
         return true;
         
     } catch (\Exception $e) {
-                'error' => $e->getMessage(),
-                'to' => $to,
-                'subject' => $subject
-            ]);
-            
-            return false;
-        }
+        LogService::error('email', 'Falha ao enviar e-mail SMTP', [
+            'error' => $e->getMessage(),
+            'to' => $to,
+            'subject' => $subject
+        ]);
+        
+        return false;
     }
+}
 
     /**
      * Envia relatório de backup

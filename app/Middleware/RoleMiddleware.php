@@ -36,7 +36,7 @@ class RoleMiddleware
             
             if (!in_array($userRole, $roles)) {
                 http_response_code(403);
-                require dirname(__DIR__, 2) . '/app/views/errors/403.php';
+                require dirname(__DIR__, 2) . '/app/Views/errors/403.php';
                 exit;
             }
             
