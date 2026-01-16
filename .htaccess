@@ -1,26 +1,26 @@
-# Bloqueie acesso a arquivos e pastas sensíveis
-<FilesMatch "^\.">
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /world/bkpmng/
+    
+    # Se for um arquivo ou diretório real, deixa passar
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Redireciona para public/index.php
+    RewriteRule ^(.*)$ public/index.php?/$1 [QSA,L]
+</IfModule>
+
+# Bloqueie acesso a arquivos ocultos
+<FilesMatch "^\.|\.php$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Bloquear acesso direto a config/
-<DirectoryMatch "^.*config">
+# Exceto index.php
+<Files "index.php">
     Order allow,deny
-    Deny from all
-</DirectoryMatch>
-
-# Bloquear acesso direto a app/
-<DirectoryMatch "^.*app">
-    Order allow,deny
-    Deny from all
-</DirectoryMatch>
-
-# Bloquear acesso direto a routes/
-<DirectoryMatch "^.*routes">
-    Order allow,deny
-    Deny from all
-</DirectoryMatch>
+    Allow from all
+</Files>
 
 # Disable directory listing
 Options -Indexes

@@ -1,19 +1,25 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Se for um arquivo ou diretório real, deixa passar
+    # Se for um arquivo real, deixa passar
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     
-    # Tudo mais vai para index.php (removido RewriteBase para compatibilidade)
-    RewriteRule ^(.*)$ index.php?/$1 [QSA,L]
+    # Tudo mais vai para index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
 
-# Bloqueie acesso a arquivos sensíveis
-<FilesMatch "^\.">
+# Bloqueie acesso a arquivos ocultos
+<FilesMatch "^\.|\.php$">
     Order allow,deny
     Deny from all
 </FilesMatch>
+
+# Exceto index.php
+<Files "index.php">
+    Order allow,deny
+    Allow from all
+</Files>
 
 # Disable directory listing
 Options -Indexes
