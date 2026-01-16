@@ -1,11 +1,19 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /world/bkpmng/public/
     
     # Se for um arquivo ou diretório real, deixa passar
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     
-    # Tudo que não é arquivo/diretório vai para index.php
-    RewriteRule ^(.*)$ index.php [QSA,L]
+    # Tudo mais vai para index.php (removido RewriteBase para compatibilidade)
+    RewriteRule ^(.*)$ index.php?/$1 [QSA,L]
 </IfModule>
+
+# Bloqueie acesso a arquivos sensíveis
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Disable directory listing
+Options -Indexes
