@@ -1,11 +1,13 @@
-RewriteEngine On
-
-# Redirect root to public folder
-RewriteCond %{REQUEST_URI} !^/public/
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ public/$1 [L]
-
-# Allow access to public folder
-RewriteCond %{REQUEST_URI} ^/public/
-RewriteRule ^public/(.*)$ - [L]
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /world/bkpmng/
+    
+    # Se for um arquivo ou diretório real, deixa passar
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    
+    # Se não for acessando /public/, redireciona para /public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
