@@ -1,5 +1,6 @@
-# Environment files
+# Environment and configuration files
 .env
+config/config.php
 
 # IDE
 .idea/

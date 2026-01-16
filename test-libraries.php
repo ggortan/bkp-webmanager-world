@@ -5,14 +5,10 @@
  * Valida se JWT e SMTP funcionam corretamente
  */
 
-define('ROOT_PATH', dirname(__DIR__));
+define('ROOT_PATH', __DIR__);
 
-// Carrega o autoloader
-require ROOT_PATH . '/public/index.php';
-
-// Carrega variáveis de ambiente
-require ROOT_PATH . '/config/env.php';
-Env::load(ROOT_PATH);
+// Carrega a configuração
+$config = require ROOT_PATH . '/config/config.php';
 
 echo "╔════════════════════════════════════════════════════════════════════════╗\n";
 echo "║                   TESTE DAS BIBLIOTECAS NATIVAS                       ║\n";
@@ -23,7 +19,7 @@ echo "🔐 Testando JWT...\n";
 echo str_repeat("-", 74) . "\n";
 
 try {
-    $appKey = $_ENV['APP_KEY'] ?? 'teste-chave-secreta-32-caracteres-aqui';
+    $appKey = $config['app']['key'] ?? 'teste-chave-secreta-32-caracteres-aqui';
     
     \App\Libraries\Jwt::setSecretKey($appKey);
     
@@ -54,15 +50,16 @@ echo "📧 Testando SMTP...\n";
 echo str_repeat("-", 74) . "\n";
 
 try {
-    $mailHost = $_ENV['MAIL_HOST'] ?? 'smtp.office365.com';
-    $mailPort = (int)$_ENV['MAIL_PORT'] ?? 587;
-    $mailUser = $_ENV['MAIL_USERNAME'] ?? '';
-    $mailPass = $_ENV['MAIL_PASSWORD'] ?? '';
-    $mailEnc = $_ENV['MAIL_ENCRYPTION'] ?? 'tls';
+    $mailConfig = $config['mail'];
+    $mailHost = $mailConfig['host'] ?? 'smtp.office365.com';
+    $mailPort = (int)$mailConfig['port'] ?? 587;
+    $mailUser = $mailConfig['username'] ?? '';
+    $mailPass = $mailConfig['password'] ?? '';
+    $mailEnc = $mailConfig['encryption'] ?? 'tls';
     
     if (empty($mailUser) || empty($mailPass)) {
-        echo "⚠ Aviso: SMTP não configurado no .env\n";
-        echo "  Configure MAIL_USERNAME e MAIL_PASSWORD para testar\n\n";
+        echo "⚠ Aviso: SMTP não configurado em config/config.php\n";
+        echo "  Configure 'mail' > 'username' e 'password' para testar\n\n";
     } else {
         $smtp = new \App\Libraries\Smtp($mailHost, $mailPort, $mailUser, $mailPass, $mailEnc);
         

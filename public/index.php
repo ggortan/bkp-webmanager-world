@@ -18,9 +18,9 @@ ini_set('error_log', ROOT_PATH . '/logs/php_errors.log');
 // Timezone
 date_default_timezone_set('America/Sao_Paulo');
 
-// Carrega configuração de ambiente
-require ROOT_PATH . '/config/env.php';
-Env::load(ROOT_PATH);
+// Carrega configuração centralizada (global para ser acessada por toda a aplicação)
+$GLOBALS['config'] = require ROOT_PATH . '/config/config.php';
+$config = $GLOBALS['config'];
 
 // Autoload
 spl_autoload_register(function ($class) {

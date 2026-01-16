@@ -1,18 +1,23 @@
 <?php
 /**
  * Configurações de Autenticação Microsoft Entra (Azure AD)
+ * 
+ * Carrega a configuração do arquivo central config.php
  */
+
+$config = require __DIR__ . '/config.php';
+$azureConfig = $config['azure'];
 
 return [
     'azure' => [
-        'client_id' => Env::get('AZURE_CLIENT_ID', ''),
-        'client_secret' => Env::get('AZURE_CLIENT_SECRET', ''),
-        'tenant_id' => Env::get('AZURE_TENANT_ID', ''),
-        'redirect_uri' => Env::get('AZURE_REDIRECT_URI', ''),
+        'client_id' => $azureConfig['client_id'],
+        'client_secret' => $azureConfig['client_secret'],
+        'tenant_id' => $azureConfig['tenant_id'],
+        'redirect_uri' => $azureConfig['redirect_uri'],
         
         // Endpoints OAuth 2.0
-        'authorize_url' => 'https://login.microsoftonline.com/' . Env::get('AZURE_TENANT_ID', '') . '/oauth2/v2.0/authorize',
-        'token_url' => 'https://login.microsoftonline.com/' . Env::get('AZURE_TENANT_ID', '') . '/oauth2/v2.0/token',
+        'authorize_url' => 'https://login.microsoftonline.com/' . $azureConfig['tenant_id'] . '/oauth2/v2.0/authorize',
+        'token_url' => 'https://login.microsoftonline.com/' . $azureConfig['tenant_id'] . '/oauth2/v2.0/token',
         'user_info_url' => 'https://graph.microsoft.com/v1.0/me',
         
         // Escopos
