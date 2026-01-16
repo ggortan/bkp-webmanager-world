@@ -6,8 +6,12 @@
  */
 
 // Define constantes
-define('ROOT_PATH', dirname(__DIR__));
-define('APP_START', microtime(true));
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', dirname(__DIR__));
+}
+if (!defined('APP_START')) {
+    define('APP_START', microtime(true));
+}
 
 // Error reporting
 error_reporting(E_ALL);
