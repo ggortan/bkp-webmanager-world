@@ -6,8 +6,10 @@
  * Não requer mod_rewrite ativo
  */
 
-// Define o caminho raiz
-define('ROOT_PATH', __DIR__);
+// Define o caminho raiz apenas se não estiver definido
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', __DIR__);
+}
 
 // Redireciona para o arquivo público
 require ROOT_PATH . '/public/index.php';
