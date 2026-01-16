@@ -2,7 +2,7 @@
     <h4 class="mb-0">
         <i class="bi bi-pencil me-2"></i>Editar Usuário
     </h4>
-    <a href="/usuarios/<?= $usuario['id'] ?>" class="btn btn-outline-secondary">
+    <a href="<?= path('/usuarios/' . $usuario['id']) ?>" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Voltar
     </a>
 </div>
@@ -11,7 +11,7 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-body">
-                <form method="POST" action="/usuarios/<?= $usuario['id'] ?>">
+                <form method="POST" action="<?= path('/usuarios/' . $usuario['id']) ?>">
                     <?= \App\Helpers\Security::csrfField() ?>
                     
                     <div class="mb-3">
@@ -55,7 +55,7 @@
                     <hr>
                     
                     <div class="d-flex justify-content-between">
-                        <a href="/usuarios/<?= $usuario['id'] ?>" class="btn btn-outline-secondary">
+                        <a href="<?= path('/usuarios/' . $usuario['id']) ?>" class="btn btn-outline-secondary">
                             Cancelar
                         </a>
                         <?php if ($usuario['id'] !== $user['id']): ?>

@@ -12,7 +12,7 @@
                 <p class="text-muted">
                     Visualize um resumo de todas as execuções de backup do sistema.
                 </p>
-                <a href="/relatorios/geral" class="btn btn-primary">
+                <a href="<?= path('/relatorios/geral') ?>" class="btn btn-primary">
                     <i class="bi bi-eye me-1"></i>Visualizar
                 </a>
             </div>
@@ -91,7 +91,7 @@
         <i class="bi bi-download me-2"></i>Exportar Dados
     </div>
     <div class="card-body">
-        <form action="/relatorios/exportar-csv" method="GET" class="row g-3">
+        <form action="<?= path('/relatorios/exportar-csv') ?>" method="GET" class="row g-3">
             <div class="col-md-3">
                 <label class="form-label">Cliente</label>
                 <select class="form-select" name="cliente_id">

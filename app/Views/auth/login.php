@@ -96,7 +96,7 @@
                 Faça login com sua conta Microsoft corporativa para acessar o sistema.
             </p>
             
-            <a href="/auth/redirect" class="btn btn-microsoft">
+            <a href="<?= path('/auth/redirect') ?>" class="btn btn-microsoft">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 23 23">
                     <path fill="#f35325" d="M1 1h10v10H1z"/>
                     <path fill="#81bc06" d="M12 1h10v10H12z"/>

@@ -12,11 +12,11 @@
     </div>
     <div class="btn-group">
         <?php if (in_array($user['role'] ?? '', ['admin', 'operator'])): ?>
-        <a href="/clientes/<?= $cliente['id'] ?>/editar" class="btn btn-outline-primary">
+        <a href="<?= path('/clientes/' . $cliente['id'] . '/editar') ?>" class="btn btn-outline-primary">
             <i class="bi bi-pencil me-1"></i>Editar
         </a>
         <?php endif; ?>
-        <a href="/relatorios/cliente/<?= $cliente['id'] ?>" class="btn btn-outline-secondary">
+        <a href="<?= path('/relatorios/cliente/' . $cliente['id']) ?>" class="btn btn-outline-secondary">
             <i class="bi bi-file-earmark-bar-graph me-1"></i>Relatórios
         </a>
     </div>
@@ -205,7 +205,7 @@ function regenerateApiKey() {
         return;
     }
     
-    fetch('/clientes/<?= $cliente['id'] ?>/regenerar-api-key', {
+    fetch('<?= path('/clientes/' . $cliente['id'] . '/regenerar-api-key') ?>', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

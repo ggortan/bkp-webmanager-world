@@ -1,7 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Se for um arquivo real, deixa passar
+    # RewriteBase deve corresponder ao caminho onde a aplicação está instalada
+    RewriteBase /world/bkpmng/
+    
+    # Se for um arquivo real, deixa passar (CSS, JS, imagens, etc.)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     
@@ -10,16 +13,17 @@
 </IfModule>
 
 # Bloqueie acesso a arquivos ocultos
-<FilesMatch "^\.|\.php$">
+<FilesMatch "^\.">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Exceto index.php
-<Files "index.php">
-    Order allow,deny
-    Allow from all
-</Files>
-
 # Disable directory listing
 Options -Indexes
+
+# Headers de segurança (se mod_headers estiver disponível)
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>

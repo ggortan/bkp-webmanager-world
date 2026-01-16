@@ -1,5 +1,8 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    
+    # RewriteBase deve corresponder ao caminho onde a aplicação está instalada
+    # Exemplo: /world/bkpmng/ se a aplicação estiver em https://domain.com/world/bkpmng/
     RewriteBase /world/bkpmng/
     
     # Se for um arquivo ou diretório real, deixa passar
@@ -7,20 +10,25 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     
     # Redireciona para public/index.php
-    RewriteRule ^(.*)$ public/index.php?/$1 [QSA,L]
+    RewriteRule ^(.*)$ public/index.php [QSA,L]
 </IfModule>
 
-# Bloqueie acesso a arquivos ocultos
-<FilesMatch "^\.|\.php$">
+# Bloqueie acesso direto a arquivos sensíveis
+<FilesMatch "\.(env|log|sql|md|sh)$">
     Order allow,deny
     Deny from all
 </FilesMatch>
 
-# Exceto index.php
-<Files "index.php">
+# Bloqueie acesso a arquivos ocultos (exceto .htaccess)
+<FilesMatch "^\.(?!htaccess)">
     Order allow,deny
-    Allow from all
-</Files>
+    Deny from all
+</FilesMatch>
+
+# Bloqueia acesso direto a pastas sensíveis
+<IfModule mod_rewrite.c>
+    RewriteRule ^(app|config|database|logs|routes)/ - [F,L]
+</IfModule>
 
 # Disable directory listing
 Options -Indexes

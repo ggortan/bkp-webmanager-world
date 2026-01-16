@@ -8,11 +8,11 @@
         </span>
     </div>
     <div class="btn-group">
-        <a href="/relatorios/exportar-csv?cliente_id=<?= $cliente['id'] ?>&data_inicio=<?= $data_inicio ?>&data_fim=<?= $data_fim ?>" 
+        <a href="<?= path('/relatorios/exportar-csv?cliente_id=' . $cliente['id'] . '&data_inicio=' . $data_inicio . '&data_fim=' . $data_fim) ?>" 
            class="btn btn-outline-secondary">
             <i class="bi bi-download me-1"></i>Exportar CSV
         </a>
-        <a href="/relatorios" class="btn btn-outline-secondary">
+        <a href="<?= path('/relatorios') ?>" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Voltar
         </a>
     </div>
@@ -21,7 +21,7 @@
 <!-- Filtro -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="/relatorios/cliente/<?= $cliente['id'] ?>" class="row g-3 align-items-end">
+        <form method="GET" action="<?= path('/relatorios/cliente/' . $cliente['id']) ?>" class="row g-3 align-items-end">
             <div class="col-md-3">
                 <label class="form-label">Data Início</label>
                 <input type="date" class="form-control" name="data_inicio" value="<?= $data_inicio ?>">

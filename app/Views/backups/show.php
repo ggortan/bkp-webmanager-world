@@ -2,7 +2,7 @@
     <h4 class="mb-0">
         <i class="bi bi-hdd me-2"></i>Detalhes da Execução #<?= $execucao['id'] ?>
     </h4>
-    <a href="/backups" class="btn btn-outline-secondary">
+    <a href="<?= path('/backups') ?>" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Voltar
     </a>
 </div>
@@ -21,7 +21,7 @@
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Cliente</label>
                         <div class="fw-semibold">
-                            <a href="/clientes/<?= $execucao['cliente_id'] ?>" class="text-decoration-none">
+                            <a href="<?= path('/clientes/' . $execucao['cliente_id']) ?>" class="text-decoration-none">
                                 <?= htmlspecialchars($execucao['cliente_nome'] ?? '-') ?>
                             </a>
                             <br><small class="text-muted"><?= htmlspecialchars($execucao['cliente_identificador'] ?? '') ?></small>

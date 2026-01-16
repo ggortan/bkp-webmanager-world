@@ -49,6 +49,9 @@ spl_autoload_register(function ($class) {
     }
 });
 
+// Carrega funções helper globais
+require ROOT_PATH . '/app/Helpers/functions.php';
+
 // Carrega configuração do banco de dados
 $dbConfig = require ROOT_PATH . '/config/database.php';
 \App\Database::configure($dbConfig);

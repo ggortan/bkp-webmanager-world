@@ -199,24 +199,24 @@
         </div>
         
         <div class="sidebar-nav">
-            <a href="/dashboard" class="nav-link <?= ($title ?? '') === 'Dashboard' ? 'active' : '' ?>">
+            <a href="<?= path('/dashboard') ?>" class="nav-link <?= ($title ?? '') === 'Dashboard' ? 'active' : '' ?>">
                 <i class="bi bi-speedometer2"></i>
                 Dashboard
             </a>
             
             <div class="sidebar-section">Gestão</div>
             
-            <a href="/clientes" class="nav-link <?= str_contains(($title ?? ''), 'Cliente') ? 'active' : '' ?>">
+            <a href="<?= path('/clientes') ?>" class="nav-link <?= str_contains(($title ?? ''), 'Cliente') ? 'active' : '' ?>">
                 <i class="bi bi-building"></i>
                 Clientes
             </a>
             
-            <a href="/backups" class="nav-link <?= str_contains(($title ?? ''), 'Backup') ? 'active' : '' ?>">
+            <a href="<?= path('/backups') ?>" class="nav-link <?= str_contains(($title ?? ''), 'Backup') ? 'active' : '' ?>">
                 <i class="bi bi-hdd-stack"></i>
                 Histórico de Backups
             </a>
             
-            <a href="/relatorios" class="nav-link <?= str_contains(($title ?? ''), 'Relatório') ? 'active' : '' ?>">
+            <a href="<?= path('/relatorios') ?>" class="nav-link <?= str_contains(($title ?? ''), 'Relatório') ? 'active' : '' ?>">
                 <i class="bi bi-file-earmark-bar-graph"></i>
                 Relatórios
             </a>
@@ -224,7 +224,7 @@
             <?php if (($user['role'] ?? '') === 'admin'): ?>
             <div class="sidebar-section">Administração</div>
             
-            <a href="/usuarios" class="nav-link <?= str_contains(($title ?? ''), 'Usuário') ? 'active' : '' ?>">
+            <a href="<?= path('/usuarios') ?>" class="nav-link <?= str_contains(($title ?? ''), 'Usuário') ? 'active' : '' ?>">
                 <i class="bi bi-people"></i>
                 Usuários
             </a>
@@ -242,7 +242,7 @@
                 </button>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+                        <li class="breadcrumb-item"><a href="<?= path('/dashboard') ?>">Home</a></li>
                         <?php if (!empty($title) && $title !== 'Dashboard'): ?>
                         <li class="breadcrumb-item active"><?= htmlspecialchars($title) ?></li>
                         <?php endif; ?>
@@ -265,7 +265,7 @@
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><span class="dropdown-item-text small text-muted"><?= htmlspecialchars($user['email'] ?? '') ?></span></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+                        <li><a class="dropdown-item" href="<?= path('/logout') ?>"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
                     </ul>
                 </div>
             </div>

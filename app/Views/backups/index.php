@@ -1,6 +1,6 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0"><i class="bi bi-hdd-stack me-2"></i>Histórico de Backups</h4>
-    <a href="/relatorios/exportar-csv?<?= http_build_query($filters) ?>" class="btn btn-outline-secondary">
+    <a href="<?= path('/relatorios/exportar-csv?' . http_build_query($filters)) ?>" class="btn btn-outline-secondary">
         <i class="bi bi-download me-1"></i>Exportar CSV
     </a>
 </div>
@@ -8,7 +8,7 @@
 <!-- Filtros -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="/backups" class="row g-3">
+        <form method="GET" action="<?= path('/backups') ?>" class="row g-3">
             <div class="col-md-3">
                 <label class="form-label">Cliente</label>
                 <select class="form-select" name="cliente_id" id="filtroCliente">
@@ -41,7 +41,7 @@
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-search me-1"></i>Filtrar
                 </button>
-                <a href="/backups" class="btn btn-outline-secondary">Limpar</a>
+                <a href="<?= path('/backups') ?>" class="btn btn-outline-secondary">Limpar</a>
             </div>
         </form>
     </div>
@@ -75,7 +75,7 @@
                         <?php foreach ($execucoes as $exec): ?>
                         <tr>
                             <td>
-                                <a href="/clientes/<?= $exec['cliente_id'] ?>" class="text-decoration-none">
+                                <a href="<?= path('/clientes/' . $exec['cliente_id']) ?>" class="text-decoration-none">
                                     <?= htmlspecialchars($exec['cliente_nome'] ?? '-') ?>
                                 </a>
                             </td>
@@ -95,7 +95,7 @@
                                 <?= \App\Services\BackupService::formatBytes($exec['tamanho_bytes'] ?? null) ?>
                             </td>
                             <td class="text-center">
-                                <a href="/backups/<?= $exec['id'] ?>" class="btn btn-sm btn-outline-secondary">
+                                <a href="<?= path('/backups/' . $exec['id']) ?>" class="btn btn-sm btn-outline-secondary">
                                     <i class="bi bi-eye"></i>
                                 </a>
                             </td>

@@ -34,7 +34,7 @@
                                         <span class="text-white fw-bold"><?= strtoupper(substr($usuario['nome'], 0, 1)) ?></span>
                                     </div>
                                     <div>
-                                        <a href="/usuarios/<?= $usuario['id'] ?>" class="text-decoration-none fw-semibold">
+                                        <a href="<?= path('/usuarios/' . $usuario['id']) ?>" class="text-decoration-none fw-semibold">
                                             <?= htmlspecialchars($usuario['nome']) ?>
                                         </a>
                                         <?php if ($usuario['id'] === $user['id']): ?>
@@ -78,10 +78,10 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
-                                    <a href="/usuarios/<?= $usuario['id'] ?>" class="btn btn-outline-secondary" title="Detalhes">
+                                    <a href="<?= path('/usuarios/' . $usuario['id']) ?>" class="btn btn-outline-secondary" title="Detalhes">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <a href="/usuarios/<?= $usuario['id'] ?>/editar" class="btn btn-outline-secondary" title="Editar">
+                                    <a href="<?= path('/usuarios/' . $usuario['id'] . '/editar') ?>" class="btn btn-outline-secondary" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                 </div>

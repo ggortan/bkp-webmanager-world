@@ -1,7 +1,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0"><i class="bi bi-building me-2"></i>Clientes</h4>
     <?php if (in_array($user['role'] ?? '', ['admin', 'operator'])): ?>
-    <a href="/clientes/criar" class="btn btn-primary">
+    <a href="<?= path('/clientes/criar') ?>" class="btn btn-primary">
         <i class="bi bi-plus-lg me-1"></i>Novo Cliente
     </a>
     <?php endif; ?>
@@ -36,7 +36,7 @@
                                 <code><?= htmlspecialchars($cliente['identificador']) ?></code>
                             </td>
                             <td>
-                                <a href="/clientes/<?= $cliente['id'] ?>" class="text-decoration-none fw-semibold">
+                                <a href="<?= path('/clientes/' . $cliente['id']) ?>" class="text-decoration-none fw-semibold">
                                     <?= htmlspecialchars($cliente['nome']) ?>
                                 </a>
                             </td>
@@ -59,11 +59,11 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
-                                    <a href="/clientes/<?= $cliente['id'] ?>" class="btn btn-outline-secondary" title="Detalhes">
+                                    <a href="<?= path('/clientes/' . $cliente['id']) ?>" class="btn btn-outline-secondary" title="Detalhes">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <?php if (in_array($user['role'] ?? '', ['admin', 'operator'])): ?>
-                                    <a href="/clientes/<?= $cliente['id'] ?>/editar" class="btn btn-outline-secondary" title="Editar">
+                                    <a href="<?= path('/clientes/' . $cliente['id'] . '/editar') ?>" class="btn btn-outline-secondary" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <?php endif; ?>

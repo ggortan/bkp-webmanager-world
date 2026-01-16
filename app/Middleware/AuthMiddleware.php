@@ -8,6 +8,7 @@
 namespace App\Middleware;
 
 use App\Services\AuthService;
+use App\Router;
 
 class AuthMiddleware
 {
@@ -22,7 +23,7 @@ class AuthMiddleware
             // Armazena URL atual para redirecionamento após login
             $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
             
-            header('Location: /login');
+            header('Location: ' . Router::path('/login'));
             exit;
         }
         

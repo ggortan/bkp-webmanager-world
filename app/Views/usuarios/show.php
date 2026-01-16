@@ -4,10 +4,10 @@
         <span class="text-muted"><?= htmlspecialchars($usuario['email']) ?></span>
     </div>
     <div class="btn-group">
-        <a href="/usuarios/<?= $usuario['id'] ?>/editar" class="btn btn-outline-primary">
+        <a href="<?= path('/usuarios/' . $usuario['id'] . '/editar') ?>" class="btn btn-outline-primary">
             <i class="bi bi-pencil me-1"></i>Editar
         </a>
-        <a href="/usuarios" class="btn btn-outline-secondary">
+        <a href="<?= path('/usuarios') ?>" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Voltar
         </a>
     </div>

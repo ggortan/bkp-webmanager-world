@@ -68,7 +68,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-building me-2"></i>Status por Cliente</span>
-                <a href="/clientes" class="btn btn-sm btn-outline-primary">Ver todos</a>
+                <a href="<?= path('/clientes') ?>" class="btn btn-sm btn-outline-primary">Ver todos</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -90,7 +90,7 @@
                                 <?php foreach (array_slice($stats_clientes, 0, 5) as $cliente): ?>
                                 <tr>
                                     <td>
-                                        <a href="/clientes/<?= $cliente['cliente_id'] ?>" class="text-decoration-none">
+                                        <a href="<?= path('/clientes/' . $cliente['cliente_id']) ?>" class="text-decoration-none">
                                             <?= htmlspecialchars($cliente['cliente_nome']) ?>
                                         </a>
                                     </td>
@@ -122,7 +122,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-clock-history me-2"></i>Últimas Execuções</span>
-                <a href="/backups" class="btn btn-sm btn-outline-primary">Ver todas</a>
+                <a href="<?= path('/backups') ?>" class="btn btn-sm btn-outline-primary">Ver todas</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">

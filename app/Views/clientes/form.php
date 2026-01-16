@@ -3,7 +3,7 @@
         <i class="bi bi-building me-2"></i>
         <?= $cliente ? 'Editar Cliente' : 'Novo Cliente' ?>
     </h4>
-    <a href="<?= $cliente ? '/clientes/' . $cliente['id'] : '/clientes' ?>" class="btn btn-outline-secondary">
+    <a href="<?= $cliente ? path('/clientes/' . $cliente['id']) : path('/clientes') ?>" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Voltar
     </a>
 </div>
@@ -12,7 +12,7 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-body">
-                <form method="POST" action="<?= $cliente ? '/clientes/' . $cliente['id'] : '/clientes' ?>">
+                <form method="POST" action="<?= $cliente ? path('/clientes/' . $cliente['id']) : path('/clientes') ?>">
                     <?= \App\Helpers\Security::csrfField() ?>
                     
                     <div class="row mb-3">

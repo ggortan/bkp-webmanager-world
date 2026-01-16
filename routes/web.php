@@ -28,7 +28,7 @@ Router::get('/logout', [AuthController::class, 'logout']);
 
 // Rota raiz redireciona para dashboard
 Router::get('/', function() {
-    header('Location: /dashboard');
+    header('Location: ' . \App\Router::path('/dashboard'));
     exit;
 });
 

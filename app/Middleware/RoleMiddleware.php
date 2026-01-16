@@ -8,6 +8,7 @@
 namespace App\Middleware;
 
 use App\Services\AuthService;
+use App\Router;
 
 class RoleMiddleware
 {
@@ -23,7 +24,7 @@ class RoleMiddleware
             $user = $authService->getUser();
             
             if (!$user) {
-                header('Location: /login');
+                header('Location: ' . Router::path('/login'));
                 exit;
             }
             

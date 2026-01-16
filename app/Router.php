@@ -166,7 +166,30 @@ class Router
     }
 
     /**
-     * Gera URL para uma rota
+     * Obtém o caminho base da aplicação
+     */
+    public static function basePath(): string
+    {
+        global $config;
+        
+        if (isset($config) && isset($config['app']['url'])) {
+            $basePath = parse_url($config['app']['url'], PHP_URL_PATH);
+            return $basePath ? rtrim($basePath, '/') : '';
+        }
+        
+        return '';
+    }
+
+    /**
+     * Gera URL para uma rota (caminho relativo com base path)
+     */
+    public static function path(string $path): string
+    {
+        return self::basePath() . $path;
+    }
+
+    /**
+     * Gera URL completa para uma rota
      */
     public static function url(string $path): string
     {

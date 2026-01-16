@@ -6,10 +6,10 @@
         </span>
     </div>
     <div class="btn-group">
-        <a href="/relatorios/exportar-csv?data_inicio=<?= $data_inicio ?>&data_fim=<?= $data_fim ?>" class="btn btn-outline-secondary">
+        <a href="<?= path('/relatorios/exportar-csv?data_inicio=' . $data_inicio . '&data_fim=' . $data_fim) ?>" class="btn btn-outline-secondary">
             <i class="bi bi-download me-1"></i>Exportar CSV
         </a>
-        <a href="/relatorios" class="btn btn-outline-secondary">
+        <a href="<?= path('/relatorios') ?>" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Voltar
         </a>
     </div>
@@ -18,7 +18,7 @@
 <!-- Filtro de Período -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="/relatorios/geral" class="row g-3 align-items-end">
+        <form method="GET" action="<?= path('/relatorios/geral') ?>" class="row g-3 align-items-end">
             <div class="col-md-3">
                 <label class="form-label">Data Início</label>
                 <input type="date" class="form-control" name="data_inicio" value="<?= $data_inicio ?>">
@@ -101,7 +101,7 @@
                             <?php foreach ($stats_clientes as $cliente): ?>
                             <tr>
                                 <td>
-                                    <a href="/relatorios/cliente/<?= $cliente['cliente_id'] ?>" class="text-decoration-none small">
+                                    <a href="<?= path('/relatorios/cliente/' . $cliente['cliente_id']) ?>" class="text-decoration-none small">
                                         <?= htmlspecialchars($cliente['cliente_nome']) ?>
                                     </a>
                                 </td>

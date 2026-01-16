@@ -31,7 +31,7 @@
         <div class="error-code">403</div>
         <h2 class="mb-3">Acesso negado</h2>
         <p class="text-muted mb-4">Você não tem permissão para acessar esta página.</p>
-        <a href="/dashboard" class="btn btn-primary">
+        <a href="<?= function_exists('path') ? path('/dashboard') : '/dashboard' ?>" class="btn btn-primary">
             <i class="bi bi-house me-1"></i>Voltar ao início
         </a>
     </div>

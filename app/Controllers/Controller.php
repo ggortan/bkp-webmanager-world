@@ -76,6 +76,10 @@ class Controller
      */
     protected function redirect(string $url): void
     {
+        // Se a URL começa com /, adiciona o base path da aplicação
+        if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+            $url = \App\Router::basePath() . $url;
+        }
         header("Location: {$url}");
         exit;
     }
