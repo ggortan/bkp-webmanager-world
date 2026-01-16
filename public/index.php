@@ -82,4 +82,19 @@ require ROOT_PATH . '/routes/web.php';
 require ROOT_PATH . '/routes/api.php';
 
 // Despacha a requisição
-\App\Router::dispatch();
+try {
+    \App\Router::dispatch();
+} catch (Exception $e) {
+    http_response_code(500);
+    
+    if ($appConfig['debug'] ?? false) {
+        echo '<pre>';
+        echo 'Erro: ' . $e->getMessage() . "\n";
+        echo 'Arquivo: ' . $e->getFile() . ':' . $e->getLine() . "\n";
+        echo '<br><br>';
+        echo $e->getTraceAsString();
+        echo '</pre>';
+    } else {
+        require ROOT_PATH . '/app/views/errors/500.php';
+    }
+}
