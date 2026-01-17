@@ -1,0 +1,43 @@
+{
+  "agent": {
+    "version": "1.0.0",
+    "server_name": "SRV-EXEMPLO-01",
+    "check_interval_minutes": 60,
+    "log_level": "INFO",
+    "log_retention_days": 30
+  },
+  "api": {
+    "url": "https://dev.gortan.com.br/world/bkpmng",
+    "api_key": "sua-api-key-aqui",
+    "timeout_seconds": 30,
+    "retry_attempts": 3,
+    "retry_delay_seconds": 5
+  },
+  "collectors": {
+    "windows_server_backup": {
+      "enabled": true,
+      "check_event_log": true,
+      "event_log_hours": 24
+    },
+    "veeam_backup": {
+      "enabled": false,
+      "veeam_ps_snapin": "VeeamPSSnapin",
+      "server": "localhost",
+      "port": 9392
+    },
+    "custom_scripts": {
+      "enabled": false,
+      "scripts_path": "C:\\BackupAgent\\custom"
+    }
+  },
+  "filters": {
+    "ignore_jobs": [],
+    "only_jobs": [],
+    "min_size_mb": 0
+  },
+  "notifications": {
+    "send_on_failure": true,
+    "send_on_warning": true,
+    "send_on_success": false
+  }
+}
