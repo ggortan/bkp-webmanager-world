@@ -25,7 +25,10 @@ class CsrfMiddleware
         
         // Ignora requisições de API (usam API Key)
         $uri = $_SERVER['REQUEST_URI'] ?? '';
-        if (strpos($uri, '/api/') === 0) {
+        
+        // Verifica se é uma requisição de API (pode ter basePath antes)
+        // Ex: /world/bkpmng/api/telemetry ou /api/telemetry
+        if (preg_match('#/api(/|$)#', $uri)) {
             return true;
         }
         

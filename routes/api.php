@@ -13,6 +13,24 @@ Router::middleware('api_auth', [ApiAuthMiddleware::class, 'handle']);
 // Rotas públicas da API
 Router::get('/api/status', [ApiBackupController::class, 'status']);
 
+// Rota de debug (REMOVER EM PRODUÇÃO)
+Router::post('/api/debug-input', function() {
+    header('Content-Type: application/json');
+    $raw = file_get_contents('php://input');
+    echo json_encode([
+        'success' => true,
+        'method' => $_SERVER['REQUEST_METHOD'],
+        'content_type' => $_SERVER['CONTENT_TYPE'] ?? null,
+        'content_length' => $_SERVER['CONTENT_LENGTH'] ?? null,
+        'body_length' => strlen($raw),
+        'body_preview' => substr($raw, 0, 300),
+        'headers' => [
+            'auth' => isset($_SERVER['HTTP_AUTHORIZATION']) ? substr($_SERVER['HTTP_AUTHORIZATION'], 0, 20) . '...' : null,
+            'api_key' => isset($_SERVER['HTTP_X_API_KEY']) ? substr($_SERVER['HTTP_X_API_KEY'], 0, 8) . '...' : null,
+        ]
+    ], JSON_PRETTY_PRINT);
+});
+
 // Rotas protegidas por API Key
 Router::group(['prefix' => '/api', 'middleware' => ['api_auth']], function () {
     

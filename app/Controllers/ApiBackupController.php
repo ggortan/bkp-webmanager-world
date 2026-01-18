@@ -207,9 +207,13 @@ class ApiBackupController extends Controller
      */
     public function telemetry(): void
     {
+        // Log imediato para debug
+        error_log("[TELEMETRY DEBUG] Método telemetry() iniciado");
+        
         $cliente = $_REQUEST['_cliente'] ?? null;
         
         if (!$cliente) {
+            error_log("[TELEMETRY DEBUG] Cliente não encontrado em _REQUEST");
             $this->json([
                 'success' => false,
                 'error' => 'Cliente não identificado',
@@ -218,8 +222,12 @@ class ApiBackupController extends Controller
             return;
         }
         
+        error_log("[TELEMETRY DEBUG] Cliente ID: " . $cliente['id']);
+        
         // Obtém dados do body
         $json = file_get_contents('php://input');
+        
+        error_log("[TELEMETRY DEBUG] Body length: " . strlen($json));
         
         // Log para debug
         LogService::log('debug', 'api', 'Telemetria recebida (raw)', [

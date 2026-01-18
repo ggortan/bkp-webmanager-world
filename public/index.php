@@ -56,10 +56,11 @@ require ROOT_PATH . '/app/Helpers/functions.php';
 $dbConfig = require ROOT_PATH . '/config/database.php';
 \App\Database::configure($dbConfig);
 
-// Configuração de sessão
+// Configuração de sessão (apenas para requisições web, não API)
 $appConfig = require ROOT_PATH . '/config/app.php';
+$isApiRequest = preg_match('#/api(/|$)#', $_SERVER['REQUEST_URI'] ?? '');
 
-if (session_status() === PHP_SESSION_NONE) {
+if (!$isApiRequest && session_status() === PHP_SESSION_NONE) {
     $sessionConfig = $appConfig['session'];
     
     session_name($sessionConfig['name']);
@@ -76,12 +77,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Regenera ID da sessão periodicamente
-if (!isset($_SESSION['last_regeneration'])) {
-    $_SESSION['last_regeneration'] = time();
-} elseif (time() - $_SESSION['last_regeneration'] > 300) {
-    session_regenerate_id(true);
-    $_SESSION['last_regeneration'] = time();
+// Regenera ID da sessão periodicamente (apenas se sessão foi iniciada)
+if (session_status() === PHP_SESSION_ACTIVE) {
+    if (!isset($_SESSION['last_regeneration'])) {
+        $_SESSION['last_regeneration'] = time();
+    } elseif (time() - $_SESSION['last_regeneration'] > 300) {
+        session_regenerate_id(true);
+        $_SESSION['last_regeneration'] = time();
+    }
 }
 
 // Carrega rotas
