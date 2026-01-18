@@ -6,7 +6,7 @@
 namespace App\Controllers;
 
 use App\Models\Cliente;
-use App\Models\Servidor;
+use App\Models\Host;
 use App\Services\AuthService;
 use App\Services\LogService;
 use App\Helpers\Security;
@@ -48,11 +48,11 @@ class ClienteController extends Controller
             return;
         }
         
-        $servidores = Servidor::byCliente($id);
+        $hosts = Host::byCliente($id);
         
         $this->data['title'] = $cliente['nome'];
         $this->data['cliente'] = $cliente;
-        $this->data['servidores'] = $servidores;
+        $this->data['hosts'] = $hosts;
         $this->data['flash'] = $this->getFlash();
         
         $this->render('clientes/show', $this->data);
