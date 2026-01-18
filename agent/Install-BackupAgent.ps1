@@ -58,7 +58,11 @@ param(
     [string]$VeeamServer = "localhost",
     
     [Parameter(Mandatory = $false)]
-    [switch]$Uninstall
+    [switch]$Uninstall,
+    
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('Service', 'Task', 'Auto')]
+    [string]$InstallMode = 'Auto'
 )
 
 #Requires -Version 5.1
@@ -126,6 +130,24 @@ function Test-Prerequisites {
 function Uninstall-Agent {
     Write-Status "Iniciando desinstalação do agente..." -Type INFO
     
+    # Remove serviço Windows
+    $serviceName = "BackupManagerAgent"
+    $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+    if ($service) {
+        Write-Status "Parando e removendo serviço Windows..." -Type INFO
+        Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
+        
+        $nssmExe = "$InstallPath\nssm.exe"
+        if (Test-Path $nssmExe) {
+            & $nssmExe remove $serviceName confirm 2>$null
+        }
+        else {
+            sc.exe delete $serviceName 2>$null
+        }
+        
+        Write-Status "Serviço removido" -Type SUCCESS
+    }
+    
     # Remove tarefa agendada
     $taskName = "BackupWebManager-Agent"
     if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
@@ -148,6 +170,167 @@ function Uninstall-Agent {
 # ============================================================
 # INSTALAÇÃO
 # ============================================================
+
+function Get-NSSM {
+    <#
+    .SYNOPSIS
+        Baixa e extrai o NSSM de fontes alternativas
+    #>
+    param(
+        [string]$DestinationPath
+    )
+    
+    $nssmExe = "$DestinationPath\nssm.exe"
+    
+    # Se já existe, usa o existente
+    if (Test-Path $nssmExe) {
+        Write-Status "NSSM já existe em: $nssmExe" -Type SUCCESS
+        return $nssmExe
+    }
+    
+    # Tenta fontes alternativas
+    $sources = @(
+        @{
+            Name = "GitHub Release"
+            Url = "https://github.com/kirillkovalenko/nssm/releases/download/v2.24.101/nssm-2.24.101.zip"
+        },
+        @{
+            Name = "NSSM.cc"
+            Url = "https://nssm.cc/release/nssm-2.24.zip"
+        },
+        @{
+            Name = "Archive.org"
+            Url = "https://web.archive.org/web/2024/https://nssm.cc/release/nssm-2.24.zip"
+        }
+    )
+    
+    $tempZip = "$env:TEMP\nssm.zip"
+    $tempDir = "$env:TEMP\nssm_extract"
+    $downloaded = $false
+    
+    foreach ($source in $sources) {
+        Write-Status "Tentando baixar NSSM de: $($source.Name)..." -Type INFO
+        
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $source.Url -OutFile $tempZip -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+            $downloaded = $true
+            Write-Status "Download concluído de: $($source.Name)" -Type SUCCESS
+            break
+        }
+        catch {
+            Write-Status "Falha ao baixar de $($source.Name): $($_.Exception.Message)" -Type WARNING
+        }
+    }
+    
+    if (-not $downloaded) {
+        Write-Status "Não foi possível baixar NSSM automaticamente" -Type ERROR
+        Write-Host ""
+        Write-Host "=== INSTALAÇÃO MANUAL DO NSSM ===" -ForegroundColor Yellow
+        Write-Host "1. Baixe manualmente de: https://github.com/kirillkovalenko/nssm/releases" -ForegroundColor White
+        Write-Host "2. Extraia o arquivo zip" -ForegroundColor White
+        Write-Host "3. Copie nssm.exe (da pasta win64) para: $DestinationPath" -ForegroundColor White
+        Write-Host "4. Execute este instalador novamente" -ForegroundColor White
+        Write-Host ""
+        return $null
+    }
+    
+    # Extrai o zip
+    Write-Status "Extraindo NSSM..." -Type INFO
+    
+    if (Test-Path $tempDir) {
+        Remove-Item $tempDir -Recurse -Force
+    }
+    
+    Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
+    
+    # Encontra o nssm.exe (64-bit preferencialmente)
+    $nssmFile = Get-ChildItem -Path $tempDir -Recurse -Filter "nssm.exe" | 
+                Where-Object { $_.DirectoryName -like "*win64*" -or $_.DirectoryName -like "*64*" } | 
+                Select-Object -First 1
+    
+    if (-not $nssmFile) {
+        $nssmFile = Get-ChildItem -Path $tempDir -Recurse -Filter "nssm.exe" | Select-Object -First 1
+    }
+    
+    if ($nssmFile) {
+        Copy-Item $nssmFile.FullName -Destination $nssmExe -Force
+        Write-Status "NSSM instalado em: $nssmExe" -Type SUCCESS
+    }
+    else {
+        Write-Status "Arquivo nssm.exe não encontrado no zip" -Type ERROR
+        return $null
+    }
+    
+    # Limpa arquivos temporários
+    Remove-Item $tempZip -Force -ErrorAction SilentlyContinue
+    Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    
+    return $nssmExe
+}
+
+function Install-AsService {
+    <#
+    .SYNOPSIS
+        Instala o agente como serviço Windows usando NSSM
+    #>
+    param(
+        [string]$ServiceName = "BackupManagerAgent",
+        [string]$AgentPath,
+        [string]$ConfigPath
+    )
+    
+    Write-Status "Instalando como serviço Windows..." -Type INFO
+    
+    # Obtém NSSM
+    $nssmExe = Get-NSSM -DestinationPath $AgentPath
+    
+    if (-not $nssmExe) {
+        Write-Status "Usando Tarefa Agendada como alternativa..." -Type WARNING
+        return $false
+    }
+    
+    # Remove serviço existente se houver
+    $existingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($existingService) {
+        Write-Status "Removendo serviço existente..." -Type INFO
+        & $nssmExe stop $ServiceName 2>$null
+        & $nssmExe remove $ServiceName confirm 2>$null
+        Start-Sleep -Seconds 2
+    }
+    
+    # Instala o serviço
+    $scriptPath = "$AgentPath\BackupAgentService.ps1"
+    $powershellPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+    
+    & $nssmExe install $ServiceName $powershellPath
+    & $nssmExe set $ServiceName AppParameters "-ExecutionPolicy Bypass -NoProfile -File `"$scriptPath`" -ConfigPath `"$ConfigPath`""
+    & $nssmExe set $ServiceName DisplayName "Backup Manager Agent"
+    & $nssmExe set $ServiceName Description "Agente de monitoramento de backup - World Informatica"
+    & $nssmExe set $ServiceName Start SERVICE_AUTO_START
+    & $nssmExe set $ServiceName AppDirectory $AgentPath
+    & $nssmExe set $ServiceName AppStdout "$AgentPath\logs\service-stdout.log"
+    & $nssmExe set $ServiceName AppStderr "$AgentPath\logs\service-stderr.log"
+    & $nssmExe set $ServiceName AppRotateFiles 1
+    & $nssmExe set $ServiceName AppRotateBytes 10485760
+    
+    # Inicia o serviço
+    Write-Status "Iniciando serviço..." -Type INFO
+    Start-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    
+    Start-Sleep -Seconds 3
+    
+    $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($service -and $service.Status -eq 'Running') {
+        Write-Status "Serviço instalado e rodando: $ServiceName" -Type SUCCESS
+        return $true
+    }
+    else {
+        Write-Status "Serviço instalado mas não iniciou automaticamente" -Type WARNING
+        Write-Status "Verifique os logs em: $AgentPath\logs" -Type INFO
+        return $true
+    }
+}
 
 function Install-Agent {
     
@@ -182,9 +365,14 @@ function Install-Agent {
     
     $sourceDir = $PSScriptRoot
     
-    # Copia o script principal
+    # Copia o script principal (execução manual)
     if (Test-Path "$sourceDir\BackupAgent.ps1") {
         Copy-Item "$sourceDir\BackupAgent.ps1" -Destination $InstallPath -Force
+    }
+    
+    # Copia o script de serviço
+    if (Test-Path "$sourceDir\BackupAgentService.ps1") {
+        Copy-Item "$sourceDir\BackupAgentService.ps1" -Destination $InstallPath -Force
     }
     
     # Copia os módulos
@@ -265,32 +453,53 @@ function Install-Agent {
         Write-Status "Verifique a URL e a conectividade de rede" -Type WARNING
     }
     
-    # Cria tarefa agendada
-    Write-Status "Criando tarefa agendada..." -Type INFO
+    # Cria tarefa agendada ou serviço
+    $installedAs = ""
     
-    $taskName = "BackupWebManager-Agent"
-    
-    # Remove tarefa existente se houver
-    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
-        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+    if ($InstallMode -eq 'Service' -or $InstallMode -eq 'Auto') {
+        $serviceInstalled = Install-AsService -ServiceName "BackupManagerAgent" -AgentPath $InstallPath -ConfigPath $configPath
+        
+        if ($serviceInstalled) {
+            $installedAs = "Serviço Windows"
+        }
+        elseif ($InstallMode -eq 'Auto') {
+            Write-Status "Fallback para Tarefa Agendada..." -Type INFO
+            $InstallMode = 'Task'
+        }
+        else {
+            Write-Status "Falha ao instalar como serviço" -Type ERROR
+            return
+        }
     }
     
-    # Define a ação
-    $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$InstallPath\BackupAgent.ps1`" -ConfigPath `"$configPath`""
-    
-    # Define o gatilho (a cada X minutos)
-    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes $CheckIntervalMinutes) -RepetitionDuration ([TimeSpan]::MaxValue)
-    
-    # Define configurações
-    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -MultipleInstances IgnoreNew
-    
-    # Define o principal (executar como SYSTEM)
-    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-    
-    # Registra a tarefa
-    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "Agente de coleta de dados de backup para Backup WebManager" | Out-Null
-    
-    Write-Status "Tarefa agendada criada: $taskName" -Type SUCCESS
+    if ($InstallMode -eq 'Task') {
+        Write-Status "Criando tarefa agendada..." -Type INFO
+        
+        $taskName = "BackupWebManager-Agent"
+        
+        # Remove tarefa existente se houver
+        if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+        }
+        
+        # Define a ação
+        $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$InstallPath\BackupAgent.ps1`" -ConfigPath `"$configPath`""
+        
+        # Define o gatilho (a cada X minutos)
+        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes $CheckIntervalMinutes) -RepetitionDuration ([TimeSpan]::MaxValue)
+        
+        # Define configurações
+        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -MultipleInstances IgnoreNew
+        
+        # Define o principal (executar como SYSTEM)
+        $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+        
+        # Registra a tarefa
+        Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "Agente de coleta de dados de backup para Backup WebManager" | Out-Null
+        
+        Write-Status "Tarefa agendada criada: $taskName" -Type SUCCESS
+        $installedAs = "Tarefa Agendada"
+    }
     
     # Executa teste inicial
     Write-Status "Executando teste inicial do agente..." -Type INFO
@@ -316,17 +525,30 @@ function Install-Agent {
     Write-Host "  URL da API: $ApiUrl" -ForegroundColor Gray
     Write-Host "  Intervalo de verificação: $CheckIntervalMinutes minutos" -ForegroundColor Gray
     Write-Host "  Veeam habilitado: $($EnableVeeam.IsPresent)" -ForegroundColor Gray
+    Write-Host "  Instalado como: $installedAs" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Próximos passos:" -ForegroundColor White
     Write-Host "  1. Verifique o arquivo de configuração: $configPath" -ForegroundColor Gray
     Write-Host "  2. Ajuste filtros e notificações conforme necessário" -ForegroundColor Gray
     Write-Host "  3. Monitore os logs em: $InstallPath\logs" -ForegroundColor Gray
-    Write-Host "  4. A tarefa agendada '$taskName' executará automaticamente" -ForegroundColor Gray
+    if ($installedAs -eq "Serviço Windows") {
+        Write-Host "  4. O serviço 'BackupManagerAgent' está rodando automaticamente" -ForegroundColor Gray
+    }
+    else {
+        Write-Host "  4. A tarefa agendada 'BackupWebManager-Agent' executará automaticamente" -ForegroundColor Gray
+    }
     Write-Host ""
     Write-Host "Comandos úteis:" -ForegroundColor White
     Write-Host "  Executar manualmente: & '$InstallPath\BackupAgent.ps1' -RunOnce" -ForegroundColor Gray
     Write-Host "  Testar sem enviar: & '$InstallPath\BackupAgent.ps1' -RunOnce -TestMode" -ForegroundColor Gray
-    Write-Host "  Ver tarefa: Get-ScheduledTask -TaskName '$taskName'" -ForegroundColor Gray
+    if ($installedAs -eq "Serviço Windows") {
+        Write-Host "  Ver status: Get-Service BackupManagerAgent" -ForegroundColor Gray
+        Write-Host "  Reiniciar: Restart-Service BackupManagerAgent" -ForegroundColor Gray
+        Write-Host "  Ver logs: Get-Content '$InstallPath\logs\agent-$(Get-Date -Format 'yyyy-MM-dd').log' -Tail 50" -ForegroundColor Gray
+    }
+    else {
+        Write-Host "  Ver tarefa: Get-ScheduledTask -TaskName 'BackupWebManager-Agent'" -ForegroundColor Gray
+    }
     Write-Host "  Desinstalar: & '$PSCommandPath' -Uninstall" -ForegroundColor Gray
     Write-Host ""
 }
