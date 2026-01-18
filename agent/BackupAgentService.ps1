@@ -400,24 +400,28 @@ function Send-Telemetry {
         }
     }
     catch {
-        $errorDetails = $_.Exception.Message
         $statusCode = $null
+        $responseBody = "Sem resposta"
         
         # Tenta obter detalhes do erro HTTP
         if ($_.Exception.Response) {
             $statusCode = [int]$_.Exception.Response.StatusCode
             try {
-                $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                $stream = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($stream)
                 $responseBody = $reader.ReadToEnd()
                 $reader.Close()
-                $errorDetails = "HTTP $statusCode - $responseBody"
+                $stream.Close()
             }
             catch {
-                $errorDetails = "HTTP $statusCode - $errorDetails"
+                $responseBody = "Não foi possível ler resposta"
             }
         }
         
-        Write-ServiceLog "Erro ao enviar telemetria: $errorDetails" -Level ERROR
+        # Log do erro com todos os detalhes
+        Write-ServiceLog "ERRO TELEMETRIA - HTTP $statusCode" -Level ERROR
+        Write-ServiceLog "Resposta do servidor: $responseBody" -Level ERROR
+        Write-ServiceLog "Exception: $($_.Exception.Message)" -Level DEBUG
         
         # Se for erro 4xx, mostra o body que foi enviado para debug
         if ($statusCode -ge 400 -and $statusCode -lt 500) {

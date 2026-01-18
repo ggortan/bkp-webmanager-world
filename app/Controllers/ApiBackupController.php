@@ -225,8 +225,25 @@ class ApiBackupController extends Controller
         LogService::log('debug', 'api', 'Telemetria recebida (raw)', [
             'cliente_id' => $cliente['id'],
             'content_length' => strlen($json),
-            'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'not set'
+            'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'not set',
+            'json_preview' => substr($json, 0, 200)
         ]);
+        
+        // Verifica se o body está vazio
+        if (empty($json)) {
+            LogService::log('error', 'api', 'Body vazio na telemetria', [
+                'cliente_id' => $cliente['id'],
+                'method' => $_SERVER['REQUEST_METHOD'],
+                'content_length_header' => $_SERVER['CONTENT_LENGTH'] ?? 'not set'
+            ]);
+            
+            $this->json([
+                'success' => false,
+                'error' => 'Body da requisição está vazio',
+                'status' => 400
+            ], 400);
+            return;
+        }
         
         // Tenta decodificar JSON
         $data = json_decode($json, true);
