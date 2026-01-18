@@ -15,6 +15,9 @@
         <a href="<?= path('/clientes/' . $cliente['id'] . '/editar') ?>" class="btn btn-outline-primary">
             <i class="bi bi-pencil me-1"></i>Editar
         </a>
+        <a href="<?= path('/clientes/' . $cliente['id'] . '/rotinas') ?>" class="btn btn-outline-success">
+            <i class="bi bi-gear me-1"></i>Rotinas
+        </a>
         <?php endif; ?>
         <a href="<?= path('/relatorios/cliente/' . $cliente['id']) ?>" class="btn btn-outline-secondary">
             <i class="bi bi-file-earmark-bar-graph me-1"></i>Relatórios

@@ -140,4 +140,50 @@ class ApiBackupController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Retorna rotinas do cliente autenticado
+     * GET /api/rotinas
+     */
+    public function rotinas(): void
+    {
+        $cliente = $_REQUEST['_cliente'] ?? null;
+        
+        if (!$cliente) {
+            $this->json([
+                'success' => false,
+                'error' => 'Cliente não identificado',
+                'status' => 401
+            ], 401);
+            return;
+        }
+        
+        $rotinas = \App\Models\RotinaBackup::ativasByCliente($cliente['id']);
+        
+        // Formata rotinas para a resposta
+        $result = array_map(function($rotina) {
+            $hostInfo = null;
+            if (!empty($rotina['host_info'])) {
+                $hostInfo = is_string($rotina['host_info']) ? 
+                    json_decode($rotina['host_info'], true) : $rotina['host_info'];
+            }
+            
+            return [
+                'id' => $rotina['id'],
+                'routine_key' => $rotina['routine_key'],
+                'nome' => $rotina['nome'],
+                'tipo' => $rotina['tipo'],
+                'destino' => $rotina['destino'],
+                'agendamento' => $rotina['agendamento'],
+                'host_info' => $hostInfo,
+                'ativa' => (bool) $rotina['ativa']
+            ];
+        }, $rotinas);
+        
+        $this->json([
+            'success' => true,
+            'rotinas' => $result,
+            'total' => count($result)
+        ]);
+    }
 }
