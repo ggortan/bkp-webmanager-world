@@ -132,7 +132,7 @@ function Test-Authentication {
         Write-Info "Testando autenticacao com X-API-Key..."
         
         # Tenta acessar endpoint que requer autenticação
-        $response = Invoke-RestMethod -Uri "$ApiUrl/backups" -Method Get -Headers $headers -TimeoutSec 15 -ErrorAction Stop
+        $response = Invoke-RestMethod -Uri "$ApiUrl/me" -Method Get -Headers $headers -TimeoutSec 15 -ErrorAction Stop
         
         Write-Success "Autenticacao bem sucedida!"
         Write-Info "API Key valida e funcionando"
@@ -214,7 +214,7 @@ function Test-SendBackup {
     Write-Host ""
     
     try {
-        $response = Invoke-RestMethod -Uri "$ApiUrl/backups" -Method Post -Headers $headers -Body $jsonBody -TimeoutSec 30 -ErrorAction Stop
+        $response = Invoke-RestMethod -Uri "$ApiUrl/backup" -Method Post -Headers $headers -Body $jsonBody -TimeoutSec 30 -ErrorAction Stop
         
         Write-Success "Backup de teste enviado com sucesso!"
         

@@ -33,7 +33,7 @@ Invoke-WebRequest -Uri "https://seu-servidor/downloads/Install-BackupAgent.ps1" 
 
 ```json
 {
-    "ApiUrl": "https://seu-servidor/api/backups",
+    "ApiUrl": "https://seu-servidor/api/backup",
     "RoutineKey": "ABC123XYZ",
     "BackupType": "WSB",
     "PollingIntervalMinutes": 60,
@@ -67,7 +67,7 @@ Para envios manuais ou casos específicos:
 
 ```powershell
 .\Send-BackupReport.ps1 `
-    -ApiUrl "https://seu-servidor/api/backups" `
+    -ApiUrl "https://seu-servidor/api/backup" `
     -RoutineKey "ABC123XYZ" `
     -Status "success" `
     -SizeBytes 1073741824 `
@@ -96,7 +96,7 @@ Configure o `BackupType` como `"WSB"` no config.json:
 
 ```json
 {
-    "ApiUrl": "https://seu-servidor/api/backups",
+    "ApiUrl": "https://seu-servidor/api/backup",
     "RoutineKey": "ROTINA-WSB-001",
     "BackupType": "WSB",
     "PollingIntervalMinutes": 60
@@ -115,7 +115,7 @@ Configure o `BackupType` como `"Veeam"`:
 
 ```json
 {
-    "ApiUrl": "https://seu-servidor/api/backups",
+    "ApiUrl": "https://seu-servidor/api/backup",
     "RoutineKey": "ROTINA-VEEAM-001",
     "BackupType": "Veeam",
     "VeeamJobName": "Daily Backup",
