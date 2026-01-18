@@ -385,7 +385,29 @@ function Install-Agent {
     # Cria arquivo de configuração
     Write-Status "Criando arquivo de configuração..." -Type INFO
     
+    # Formato compatível com BackupAgentService.ps1
     $config = @{
+        # Campos na raiz para BackupAgentService.ps1
+        api_url = $ApiUrl.TrimEnd('/')
+        api_token = $ApiKey
+        host_name = $ServerName
+        
+        # Configuração de telemetria
+        telemetry = @{
+            enabled = $true
+            interval_minutes = 5
+        }
+        
+        # Configuração de backup
+        backup = @{
+            check_interval_minutes = $CheckIntervalMinutes
+            collectors = @("wsb", "veeam")
+        }
+        
+        # Rotinas (devem ser preenchidas manualmente com as routine_keys do WebManager)
+        routines = @()
+        
+        # Configurações adicionais (para BackupAgent.ps1 legado)
         agent = @{
             version = "1.0.0"
             server_name = $ServerName

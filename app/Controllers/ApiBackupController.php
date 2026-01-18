@@ -220,26 +220,48 @@ class ApiBackupController extends Controller
         
         // Obtém dados do body
         $json = file_get_contents('php://input');
+        
+        // Log para debug
+        LogService::log('debug', 'api', 'Telemetria recebida (raw)', [
+            'cliente_id' => $cliente['id'],
+            'content_length' => strlen($json),
+            'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'not set'
+        ]);
+        
+        // Tenta decodificar JSON
         $data = json_decode($json, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
+            LogService::log('error', 'api', 'JSON inválido na telemetria', [
+                'cliente_id' => $cliente['id'],
+                'json_error' => json_last_error_msg(),
+                'raw_preview' => substr($json, 0, 500)
+            ]);
+            
             $this->json([
                 'success' => false,
-                'error' => 'JSON inválido',
+                'error' => 'JSON inválido: ' . json_last_error_msg(),
                 'status' => 400
             ], 400);
             return;
         }
         
+        // Aceita múltiplos nomes de campo para host_name
+        $hostName = $data['host_name'] ?? $data['hostname'] ?? $data['name'] ?? null;
+        
         // Valida campos obrigatórios
-        if (empty($data['host_name'])) {
+        if (empty($hostName)) {
             $this->json([
                 'success' => false,
                 'error' => "O campo 'host_name' é obrigatório",
+                'received_fields' => array_keys($data),
                 'status' => 422
             ], 422);
             return;
         }
+        
+        // Usa host_name encontrado
+        $data['host_name'] = $hostName;
         
         try {
             $hostNome = $data['host_name'];

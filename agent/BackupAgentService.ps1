@@ -358,25 +358,41 @@ function Send-Telemetry {
     $systemInfo = Get-SystemInfo
     $metrics = Get-SystemMetrics
     
-    $body = @{
+    # Monta o payload
+    $payload = @{
         host_name = $script:Config.host_name
         hostname = $systemInfo.hostname
         ip = $systemInfo.ip
         os = $systemInfo.os
         metrics = $metrics
-    } | ConvertTo-Json -Depth 5
+    }
     
+    # Log do payload antes de converter
+    Write-ServiceLog "Payload: host_name=$($payload.host_name), hostname=$($payload.hostname)" -Level DEBUG
+    
+    # Converte para JSON como string simples
+    $body = $payload | ConvertTo-Json -Depth 10 -Compress
+    
+    Write-ServiceLog "JSON Body (preview): $($body.Substring(0, [Math]::Min(200, $body.Length)))..." -Level DEBUG
+    
+    # Suporta ambos os métodos de autenticação
     $headers = @{
         'Content-Type' = 'application/json'
         'Authorization' = "Bearer $($script:Config.api_token)"
+        'X-API-Key' = $script:Config.api_token
         'Accept' = 'application/json'
     }
     
+    Write-ServiceLog "Endpoint: $endpoint" -Level DEBUG
+    
     try {
-        $response = Invoke-RestMethod -Uri $endpoint -Method POST -Headers $headers -Body $body -TimeoutSec 30
+        # Usa Invoke-WebRequest para ter mais controle
+        $webResponse = Invoke-WebRequest -Uri $endpoint -Method POST -Headers $headers -Body $body -ContentType 'application/json' -TimeoutSec 30 -UseBasicParsing
+        
+        $response = $webResponse.Content | ConvertFrom-Json
         
         if ($response.success) {
-            Write-ServiceLog "Telemetria enviada - Status: $($response.status)"
+            Write-ServiceLog "Telemetria enviada - Host ID: $($response.host_id), Status: $($response.status)"
             $script:LastTelemetry = Get-Date
         }
         else {
@@ -384,7 +400,29 @@ function Send-Telemetry {
         }
     }
     catch {
-        Write-ServiceLog "Erro ao enviar telemetria: $($_.Exception.Message)" -Level ERROR
+        $errorDetails = $_.Exception.Message
+        $statusCode = $null
+        
+        # Tenta obter detalhes do erro HTTP
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+            try {
+                $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                $responseBody = $reader.ReadToEnd()
+                $reader.Close()
+                $errorDetails = "HTTP $statusCode - $responseBody"
+            }
+            catch {
+                $errorDetails = "HTTP $statusCode - $errorDetails"
+            }
+        }
+        
+        Write-ServiceLog "Erro ao enviar telemetria: $errorDetails" -Level ERROR
+        
+        # Se for erro 4xx, mostra o body que foi enviado para debug
+        if ($statusCode -ge 400 -and $statusCode -lt 500) {
+            Write-ServiceLog "Body enviado: $body" -Level DEBUG
+        }
     }
 }
 

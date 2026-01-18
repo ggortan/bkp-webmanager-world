@@ -28,5 +28,22 @@
       "source": "veeam",
       "job_name": "Backup Diário - Servidor Arquivos"
     }
-  ]
+  ],
+
+  "_CAMPOS_LEGADO_ABAIXO": "Os campos abaixo são para compatibilidade com versões anteriores",
+  
+  "agent": {
+    "version": "1.0.0",
+    "server_name": "SRV-EXEMPLO-01",
+    "check_interval_minutes": 60,
+    "log_level": "INFO",
+    "log_retention_days": 30
+  },
+  "api": {
+    "url": "https://backup.seudominio.com",
+    "api_key": "COLE_AQUI_A_API_KEY_DO_CLIENTE",
+    "timeout_seconds": 30,
+    "retry_attempts": 3,
+    "retry_delay_seconds": 5
+  }
 }
