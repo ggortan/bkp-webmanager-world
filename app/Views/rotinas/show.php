@@ -124,38 +124,107 @@
                 $hostInfo = is_string($rotina['host_info']) ? json_decode($rotina['host_info'], true) : $rotina['host_info'];
             }
         ?>
-        <?php if ($hostInfo && !empty(array_filter($hostInfo))): ?>
+        
+        <!-- Host Vinculado ou Host Info -->
+        <?php if ($host): ?>
         <div class="card">
             <div class="card-header">
-                <i class="bi bi-pc-display me-2"></i>Informações do Host
+                <i class="bi bi-pc-display me-2"></i>Host Vinculado
             </div>
             <div class="card-body">
                 <table class="table table-sm mb-0">
-                    <?php if (!empty($hostInfo['nome'])): ?>
                     <tr>
                         <th class="border-0 ps-0">Nome</th>
-                        <td class="border-0 text-end"><?= htmlspecialchars($hostInfo['nome']) ?></td>
+                        <td class="border-0 text-end">
+                            <a href="<?= path('/clientes/' . $cliente['id'] . '/hosts/' . $host['id']) ?>">
+                                <?= htmlspecialchars($host['nome']) ?>
+                            </a>
+                        </td>
+                    </tr>
+                    <?php if (!empty($host['hostname'])): ?>
+                    <tr>
+                        <th class="ps-0">Hostname</th>
+                        <td class="text-end"><code><?= htmlspecialchars($host['hostname']) ?></code></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (!empty($host['ip'])): ?>
+                    <tr>
+                        <th class="ps-0">IP</th>
+                        <td class="text-end"><code><?= htmlspecialchars($host['ip']) ?></code></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (!empty($host['sistema_operacional'])): ?>
+                    <tr>
+                        <th class="ps-0">Sistema Operacional</th>
+                        <td class="text-end"><?= htmlspecialchars($host['sistema_operacional']) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (!empty($host['tipo'])): ?>
+                    <tr>
+                        <th class="ps-0">Tipo</th>
+                        <td class="text-end">
+                            <span class="badge bg-secondary"><?= htmlspecialchars($host['tipo']) ?></span>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <tr>
+                        <th class="ps-0">Status Conexão</th>
+                        <td class="text-end">
+                            <?php if (($host['online_status'] ?? 'unknown') === 'online'): ?>
+                                <span class="badge bg-success">
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Online
+                                </span>
+                            <?php elseif (($host['online_status'] ?? 'unknown') === 'offline'): ?>
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary">Desconhecido</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+                <a href="<?= path('/clientes/' . $cliente['id'] . '/hosts/' . $host['id']) ?>" class="btn btn-sm btn-outline-primary mt-3">
+                    <i class="bi bi-eye me-1"></i>Ver Host
+                </a>
+            </div>
+        </div>
+        <?php elseif ($hostInfo && !empty(array_filter($hostInfo))): ?>
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-pc-display me-2"></i>Informações do Host (via API)
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <?php if (!empty($hostInfo['name']) || !empty($hostInfo['nome'])): ?>
+                    <tr>
+                        <th class="border-0 ps-0">Nome</th>
+                        <td class="border-0 text-end"><?= htmlspecialchars($hostInfo['name'] ?? $hostInfo['nome']) ?></td>
                     </tr>
                     <?php endif; ?>
                     <?php if (!empty($hostInfo['hostname'])): ?>
                     <tr>
                         <th class="ps-0">Hostname</th>
-                        <td class="text-end"><?= htmlspecialchars($hostInfo['hostname']) ?></td>
+                        <td class="text-end"><code><?= htmlspecialchars($hostInfo['hostname']) ?></code></td>
                     </tr>
                     <?php endif; ?>
                     <?php if (!empty($hostInfo['ip'])): ?>
                     <tr>
                         <th class="ps-0">IP</th>
-                        <td class="text-end"><?= htmlspecialchars($hostInfo['ip']) ?></td>
+                        <td class="text-end"><code><?= htmlspecialchars($hostInfo['ip']) ?></code></td>
                     </tr>
                     <?php endif; ?>
-                    <?php if (!empty($hostInfo['sistema_operacional'])): ?>
+                    <?php if (!empty($hostInfo['os']) || !empty($hostInfo['sistema_operacional'])): ?>
                     <tr>
                         <th class="ps-0">Sistema Operacional</th>
-                        <td class="text-end"><?= htmlspecialchars($hostInfo['sistema_operacional']) ?></td>
+                        <td class="text-end"><?= htmlspecialchars($hostInfo['os'] ?? $hostInfo['sistema_operacional']) ?></td>
                     </tr>
                     <?php endif; ?>
                 </table>
+                <div class="alert alert-info small mt-3 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Estas informações foram enviadas via API. O host não está vinculado formalmente.
+                </div>
             </div>
         </div>
         <?php endif; ?>

@@ -78,6 +78,7 @@ $results = @{
     Authentication = $null
     SendBackup = $null
     Telemetry = $null
+    TelemetryHistory = $null
 }
 
 # ============================================
@@ -338,7 +339,7 @@ function Test-SendBackup {
 }
 
 # ============================================
-# TESTE 4: Telemetria
+# TESTE 4: Telemetria (Versão Aprimorada)
 # ============================================
 function Test-Telemetry {
     Write-Host ""
@@ -352,46 +353,108 @@ function Test-Telemetry {
         "X-API-Key" = $ApiKey
     }
     
-    # Coleta métricas do sistema
-    Write-Info "Coletando metricas do sistema..."
+    # Coleta métricas completas do sistema
+    Write-Info "Coletando metricas completas do sistema..."
     
     $metrics = @{}
     
+    # ========== CPU ==========
     try {
-        $cpu = Get-CimInstance -ClassName Win32_Processor | Measure-Object -Property LoadPercentage -Average
-        $metrics['cpu_percent'] = [math]::Round($cpu.Average, 2)
+        $cpuInfo = Get-CimInstance -ClassName Win32_Processor
+        $cpuAvg = $cpuInfo | Measure-Object -Property LoadPercentage -Average
+        $metrics['cpu_percent'] = [math]::Round($cpuAvg.Average, 2)
+        
+        $cpuFirst = $cpuInfo | Select-Object -First 1
+        $metrics['cpu_info'] = @{
+            name = $cpuFirst.Name.Trim()
+            cores = $cpuFirst.NumberOfCores
+            logical_processors = $cpuFirst.NumberOfLogicalProcessors
+            max_clock_mhz = $cpuFirst.MaxClockSpeed
+        }
     }
     catch {
         $metrics['cpu_percent'] = 0
     }
     
+    # ========== MEMÓRIA ==========
     try {
         $os = Get-CimInstance -ClassName Win32_OperatingSystem
-        $memoryUsed = $os.TotalVisibleMemorySize - $os.FreePhysicalMemory
-        $metrics['memory_percent'] = [math]::Round(($memoryUsed / $os.TotalVisibleMemorySize) * 100, 2)
+        $memoryTotalKB = $os.TotalVisibleMemorySize
+        $memoryFreeKB = $os.FreePhysicalMemory
+        $memoryUsedKB = $memoryTotalKB - $memoryFreeKB
+        
+        $metrics['memory_percent'] = [math]::Round(($memoryUsedKB / $memoryTotalKB) * 100, 2)
+        $metrics['memory_total_mb'] = [math]::Round($memoryTotalKB / 1024, 0)
+        $metrics['memory_used_mb'] = [math]::Round($memoryUsedKB / 1024, 0)
+        $metrics['memory_free_mb'] = [math]::Round($memoryFreeKB / 1024, 0)
+        $metrics['memory_total_gb'] = [math]::Round($memoryTotalKB / 1024 / 1024, 2)
     }
     catch {
         $metrics['memory_percent'] = 0
     }
     
+    # ========== DISCOS (TODOS) ==========
     try {
-        $sysDrive = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DeviceID='$($env:SystemDrive)'"
+        $allDisks = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DriveType=3"
+        $disksList = @()
+        
+        foreach ($disk in $allDisks) {
+            $diskUsed = $disk.Size - $disk.FreeSpace
+            $diskPercent = if ($disk.Size -gt 0) { [math]::Round(($diskUsed / $disk.Size) * 100, 2) } else { 0 }
+            
+            $disksList += @{
+                drive = $disk.DeviceID
+                volume_name = $disk.VolumeName
+                total_gb = [math]::Round($disk.Size / 1GB, 2)
+                used_gb = [math]::Round($diskUsed / 1GB, 2)
+                free_gb = [math]::Round($disk.FreeSpace / 1GB, 2)
+                percent_used = $diskPercent
+            }
+        }
+        
+        $metrics['disks'] = $disksList
+        $metrics['disk_count'] = $disksList.Count
+        
+        # Disco do sistema para compatibilidade
+        $sysDrive = $allDisks | Where-Object { $_.DeviceID -eq $env:SystemDrive }
         if ($sysDrive) {
-            $diskUsed = $sysDrive.Size - $sysDrive.FreeSpace
-            $metrics['disk_percent'] = [math]::Round(($diskUsed / $sysDrive.Size) * 100, 2)
+            $sysDiskUsed = $sysDrive.Size - $sysDrive.FreeSpace
+            $metrics['disk_percent'] = [math]::Round(($sysDiskUsed / $sysDrive.Size) * 100, 2)
+            $metrics['disk_total_gb'] = [math]::Round($sysDrive.Size / 1GB, 2)
+            $metrics['disk_used_gb'] = [math]::Round($sysDiskUsed / 1GB, 2)
+            $metrics['disk_free_gb'] = [math]::Round($sysDrive.FreeSpace / 1GB, 2)
         }
     }
     catch {
         $metrics['disk_percent'] = 0
     }
     
+    # ========== UPTIME ==========
     try {
-        $uptime = (Get-Date) - (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime
+        $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+        $uptime = (Get-Date) - $osInfo.LastBootUpTime
         $metrics['uptime_seconds'] = [math]::Round($uptime.TotalSeconds, 0)
+        $metrics['uptime_days'] = [math]::Round($uptime.TotalDays, 2)
+        $metrics['last_boot'] = $osInfo.LastBootUpTime.ToString("yyyy-MM-dd HH:mm:ss")
     }
     catch {
         $metrics['uptime_seconds'] = 0
     }
+    
+    # ========== SISTEMA ==========
+    try {
+        $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem
+        $metrics['system_info'] = @{
+            manufacturer = $computerSystem.Manufacturer
+            model = $computerSystem.Model
+            domain = $computerSystem.Domain
+            total_physical_memory_gb = [math]::Round($computerSystem.TotalPhysicalMemory / 1GB, 2)
+        }
+    }
+    catch { }
+    
+    # Timestamp de coleta
+    $metrics['collected_at'] = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     
     # Obtém IP
     $ipAddress = $null
@@ -406,27 +469,31 @@ function Test-Telemetry {
     }
     
     # Obtém OS
-    $osInfo = $null
+    $osCaption = $null
     try {
-        $osInfo = (Get-CimInstance Win32_OperatingSystem).Caption
+        $osCaption = (Get-CimInstance Win32_OperatingSystem).Caption
     }
     catch { }
     
-    # Dados de telemetria
+    # Dados de telemetria completos
     $telemetryData = @{
         host_name = $HostName
         hostname = [System.Net.Dns]::GetHostName()
         ip = $ipAddress
-        os = $osInfo
+        os = $osCaption
         metrics = $metrics
     }
     
-    $jsonBody = $telemetryData | ConvertTo-Json -Depth 5
+    $jsonBody = $telemetryData | ConvertTo-Json -Depth 10
     
     Write-Info "Host Name: $HostName"
     Write-Host ""
-    Write-Host "Payload:" -ForegroundColor Gray
-    Write-Host $jsonBody -ForegroundColor DarkGray
+    Write-Host "Metricas Coletadas:" -ForegroundColor Gray
+    Write-Host "  CPU: $($metrics['cpu_percent'])%" -ForegroundColor DarkGray
+    Write-Host "  Memoria: $($metrics['memory_percent'])% ($($metrics['memory_used_mb'])MB / $($metrics['memory_total_mb'])MB)" -ForegroundColor DarkGray
+    Write-Host "  Disco Sistema: $($metrics['disk_percent'])% ($($metrics['disk_used_gb'])GB / $($metrics['disk_total_gb'])GB)" -ForegroundColor DarkGray
+    Write-Host "  Discos Encontrados: $($metrics['disk_count'])" -ForegroundColor DarkGray
+    Write-Host "  Uptime: $($metrics['uptime_days']) dias" -ForegroundColor DarkGray
     Write-Host ""
     Write-Info "Enviando telemetria..."
     
@@ -437,12 +504,14 @@ function Test-Telemetry {
             Write-Success "Telemetria enviada com sucesso!"
             Write-Info "Host ID: $($response.host_id)"
             Write-Info "Status: $($response.status)"
-            return $true
+            
+            # Retorna o host_id para usar na verificação de histórico
+            return @{ Success = $true; HostId = $response.host_id }
         }
         else {
             Write-Fail "Resposta inesperada da API"
             Write-Warn "Resposta: $($response | ConvertTo-Json -Compress)"
-            return $false
+            return @{ Success = $false; HostId = $null }
         }
     }
     catch {
@@ -477,6 +546,88 @@ function Test-Telemetry {
                 if ($errorBody) { Write-Warn "Detalhes: $errorBody" }
             }
         }
+        return @{ Success = $false; HostId = $null }
+    }
+}
+
+# ============================================
+# TESTE 4.1: Verificação de Histórico de Telemetria
+# ============================================
+function Test-TelemetryHistory {
+    param(
+        [int]$HostId = 0
+    )
+    
+    Write-Host ""
+    Write-Host "--- Verificacao de Historico de Telemetria ---" -ForegroundColor Yellow
+    
+    if ($HostId -eq 0) {
+        Write-Warn "Host ID nao fornecido. Pulando verificacao de historico."
+        return $null
+    }
+    
+    $headers = @{
+        "Content-Type" = "application/json"
+        "Accept" = "application/json"
+        "Authorization" = "Bearer $ApiKey"
+        "X-API-Key" = $ApiKey
+    }
+    
+    try {
+        Write-Info "Verificando historico de telemetria para Host ID: $HostId..."
+        
+        # Obtém a lista de hosts para verificar a telemetria
+        $response = Invoke-RestMethod -Uri "$ApiUrl/hosts" -Method Get -Headers $headers -TimeoutSec 15 -ErrorAction Stop
+        
+        if ($response.success -and $response.hosts) {
+            $targetHost = $response.hosts | Where-Object { $_.id -eq $HostId }
+            
+            if ($targetHost) {
+                Write-Success "Host encontrado: $($targetHost.nome)"
+                
+                # Verifica se há dados de telemetria
+                if ($targetHost.telemetry_data) {
+                    Write-Success "Dados de telemetria presentes no host"
+                    
+                    $telemetryData = if ($targetHost.telemetry_data -is [string]) { 
+                        $targetHost.telemetry_data | ConvertFrom-Json 
+                    } else { 
+                        $targetHost.telemetry_data 
+                    }
+                    
+                    Write-Host ""
+                    Write-Host "Ultima Telemetria Armazenada:" -ForegroundColor Gray
+                    if ($telemetryData.cpu_percent) { Write-Host "  CPU: $($telemetryData.cpu_percent)%" -ForegroundColor DarkGray }
+                    if ($telemetryData.memory_percent) { Write-Host "  Memoria: $($telemetryData.memory_percent)%" -ForegroundColor DarkGray }
+                    if ($telemetryData.disk_percent) { Write-Host "  Disco: $($telemetryData.disk_percent)%" -ForegroundColor DarkGray }
+                    if ($telemetryData.uptime_days) { Write-Host "  Uptime: $($telemetryData.uptime_days) dias" -ForegroundColor DarkGray }
+                    if ($telemetryData.collected_at) { Write-Host "  Coletado em: $($telemetryData.collected_at)" -ForegroundColor DarkGray }
+                    
+                    return $true
+                }
+                else {
+                    Write-Warn "Nenhum dado de telemetria encontrado no host"
+                    Write-Info "A telemetria pode levar alguns segundos para ser processada"
+                    return $false
+                }
+            }
+            else {
+                Write-Warn "Host ID $HostId nao encontrado na lista de hosts"
+                return $false
+            }
+        }
+        else {
+            Write-Warn "Nao foi possivel obter lista de hosts"
+            return $false
+        }
+    }
+    catch {
+        $statusCode = 0
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+        
+        Write-Fail "Erro ao verificar historico: $($_.Exception.Message)"
         return $false
     }
 }
@@ -569,7 +720,16 @@ switch ($TestType) {
         if ($results.Connectivity) {
             $results.Authentication = Test-Authentication
             if ($results.Authentication) {
-                $results.Telemetry = Test-Telemetry
+                $telemetryResult = Test-Telemetry
+                if ($telemetryResult -is [hashtable]) {
+                    $results.Telemetry = $telemetryResult.Success
+                    if ($telemetryResult.HostId) {
+                        Start-Sleep -Seconds 2  # Aguarda processamento
+                        $results.TelemetryHistory = Test-TelemetryHistory -HostId $telemetryResult.HostId
+                    }
+                } else {
+                    $results.Telemetry = $telemetryResult
+                }
                 Test-ListHosts | Out-Null
             }
         }
@@ -580,7 +740,16 @@ switch ($TestType) {
             $results.Authentication = Test-Authentication
             if ($results.Authentication) {
                 $results.SendBackup = Test-SendBackup
-                $results.Telemetry = Test-Telemetry
+                $telemetryResult = Test-Telemetry
+                if ($telemetryResult -is [hashtable]) {
+                    $results.Telemetry = $telemetryResult.Success
+                    if ($telemetryResult.HostId) {
+                        Start-Sleep -Seconds 2  # Aguarda processamento
+                        $results.TelemetryHistory = Test-TelemetryHistory -HostId $telemetryResult.HostId
+                    }
+                } else {
+                    $results.Telemetry = $telemetryResult
+                }
                 Test-ListHosts | Out-Null
             }
         }
@@ -616,6 +785,11 @@ elseif ($TestType -eq 'full' -and -not $RoutineKey) {
 if ($null -ne $results.Telemetry) {
     if ($results.Telemetry) { Write-Success "Telemetria: OK" }
     else { Write-Fail "Telemetria: FALHOU"; $exitCode = 1 }
+}
+
+if ($null -ne $results.TelemetryHistory) {
+    if ($results.TelemetryHistory) { Write-Success "Historico de Telemetria: OK" }
+    else { Write-Warn "Historico de Telemetria: NAO CONFIRMADO" }
 }
 
 Write-Host ""

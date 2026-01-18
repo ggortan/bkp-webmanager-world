@@ -143,7 +143,136 @@
                         </td>
                     </tr>
                     <?php endif; ?>
+                    <?php if (isset($telemetry['last_boot'])): ?>
+                    <tr>
+                        <th class="ps-0">Último Boot</th>
+                        <td class="text-end">
+                            <small><?= $telemetry['last_boot'] ?></small>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (isset($telemetry['collected_at'])): ?>
+                    <tr>
+                        <th class="ps-0">Coletado em</th>
+                        <td class="text-end">
+                            <small class="text-muted"><?= $telemetry['collected_at'] ?></small>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
                 </table>
+                
+                <!-- Informações detalhadas do CPU -->
+                <?php if (isset($telemetry['cpu_info']) && is_array($telemetry['cpu_info'])): ?>
+                <hr class="my-3">
+                <h6 class="mb-2"><i class="bi bi-cpu me-2"></i>Processador</h6>
+                <table class="table table-sm mb-0">
+                    <?php if (!empty($telemetry['cpu_info']['name'])): ?>
+                    <tr>
+                        <th class="border-0 ps-0">Modelo</th>
+                        <td class="border-0 text-end">
+                            <small><?= htmlspecialchars($telemetry['cpu_info']['name']) ?></small>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (isset($telemetry['cpu_info']['cores'])): ?>
+                    <tr>
+                        <th class="ps-0">Núcleos</th>
+                        <td class="text-end"><?= $telemetry['cpu_info']['cores'] ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (isset($telemetry['cpu_info']['logical_processors'])): ?>
+                    <tr>
+                        <th class="ps-0">Processadores Lógicos</th>
+                        <td class="text-end"><?= $telemetry['cpu_info']['logical_processors'] ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (isset($telemetry['cpu_info']['max_clock_mhz'])): ?>
+                    <tr>
+                        <th class="ps-0">Clock Máx.</th>
+                        <td class="text-end"><?= number_format($telemetry['cpu_info']['max_clock_mhz'] / 1000, 2) ?> GHz</td>
+                    </tr>
+                    <?php endif; ?>
+                </table>
+                <?php endif; ?>
+                
+                <!-- Informações detalhadas de Memória -->
+                <?php if (isset($telemetry['memory_total_mb'])): ?>
+                <hr class="my-3">
+                <h6 class="mb-2"><i class="bi bi-memory me-2"></i>Memória</h6>
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <th class="border-0 ps-0">Total</th>
+                        <td class="border-0 text-end">
+                            <?= isset($telemetry['memory_total_gb']) ? number_format($telemetry['memory_total_gb'], 2) . ' GB' : number_format($telemetry['memory_total_mb'] / 1024, 2) . ' GB' ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="ps-0">Em Uso</th>
+                        <td class="text-end"><?= number_format($telemetry['memory_used_mb'] / 1024, 2) ?> GB</td>
+                    </tr>
+                    <?php if (isset($telemetry['memory_free_mb'])): ?>
+                    <tr>
+                        <th class="ps-0">Livre</th>
+                        <td class="text-end"><?= number_format($telemetry['memory_free_mb'] / 1024, 2) ?> GB</td>
+                    </tr>
+                    <?php endif; ?>
+                </table>
+                <?php endif; ?>
+                
+                <!-- Informações detalhadas de Discos -->
+                <?php if (isset($telemetry['disks']) && is_array($telemetry['disks']) && count($telemetry['disks']) > 0): ?>
+                <hr class="my-3">
+                <h6 class="mb-2"><i class="bi bi-hdd me-2"></i>Discos (<?= count($telemetry['disks']) ?>)</h6>
+                <table class="table table-sm mb-0">
+                    <?php foreach ($telemetry['disks'] as $disk): ?>
+                    <tr>
+                        <th class="<?= $disk === reset($telemetry['disks']) ? 'border-0' : '' ?> ps-0">
+                            <code><?= htmlspecialchars($disk['drive'] ?? '') ?></code>
+                            <?php if (!empty($disk['volume_name'])): ?>
+                                <small class="text-muted">(<?= htmlspecialchars($disk['volume_name']) ?>)</small>
+                            <?php endif; ?>
+                        </th>
+                        <td class="<?= $disk === reset($telemetry['disks']) ? 'border-0' : '' ?> text-end">
+                            <div class="d-flex align-items-center justify-content-end">
+                                <div class="progress me-2" style="width: 60px; height: 8px;">
+                                    <div class="progress-bar <?= ($disk['percent_used'] ?? 0) > 90 ? 'bg-danger' : (($disk['percent_used'] ?? 0) > 75 ? 'bg-warning' : 'bg-success') ?>" 
+                                         style="width: <?= $disk['percent_used'] ?? 0 ?>%"></div>
+                                </div>
+                                <small><?= number_format($disk['used_gb'] ?? 0, 0) ?>/<?= number_format($disk['total_gb'] ?? 0, 0) ?>GB</small>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </table>
+                <?php endif; ?>
+                
+                <!-- Informações do Sistema -->
+                <?php if (isset($telemetry['system_info']) && is_array($telemetry['system_info'])): ?>
+                <hr class="my-3">
+                <h6 class="mb-2"><i class="bi bi-pc-display me-2"></i>Sistema</h6>
+                <table class="table table-sm mb-0">
+                    <?php if (!empty($telemetry['system_info']['manufacturer'])): ?>
+                    <tr>
+                        <th class="border-0 ps-0">Fabricante</th>
+                        <td class="border-0 text-end">
+                            <small><?= htmlspecialchars($telemetry['system_info']['manufacturer']) ?></small>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (!empty($telemetry['system_info']['model'])): ?>
+                    <tr>
+                        <th class="ps-0">Modelo</th>
+                        <td class="text-end"><small><?= htmlspecialchars($telemetry['system_info']['model']) ?></small></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (!empty($telemetry['system_info']['domain'])): ?>
+                    <tr>
+                        <th class="ps-0">Domínio</th>
+                        <td class="text-end"><code><?= htmlspecialchars($telemetry['system_info']['domain']) ?></code></td>
+                    </tr>
+                    <?php endif; ?>
+                </table>
+                <?php endif; ?>
                 <?php else: ?>
                 <p class="text-muted mb-0 text-center">Nenhum dado de telemetria disponível.</p>
                 <?php endif; ?>

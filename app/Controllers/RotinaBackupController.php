@@ -61,12 +61,12 @@ class RotinaBackupController extends Controller
             return;
         }
         
-        // Busca hostes do cliente para opção de vinculação
-        $hostes = Host::byCliente($clienteId);
+        // Busca hosts do cliente para opção de vinculação
+        $hosts = Host::byCliente($clienteId);
         
         $this->data['title'] = 'Nova Rotina de Backup';
         $this->data['cliente'] = $cliente;
-        $this->data['hostes'] = $hostes;
+        $this->data['hosts'] = $hosts;
         $this->data['rotina'] = null;
         $this->data['errors'] = [];
         
@@ -98,10 +98,10 @@ class RotinaBackupController extends Controller
         }
         
         if (!empty($errors)) {
-            $hostes = Host::byCliente($clienteId);
+            $hosts = Host::byCliente($clienteId);
             $this->data['title'] = 'Nova Rotina de Backup';
             $this->data['cliente'] = $cliente;
-            $this->data['hostes'] = $hostes;
+            $this->data['hosts'] = $hosts;
             $this->data['rotina'] = $data;
             $this->data['errors'] = $errors;
             $this->render('rotinas/form', $this->data);
@@ -193,12 +193,12 @@ class RotinaBackupController extends Controller
             return;
         }
         
-        // Busca hostes do cliente
-        $hostes = Host::byCliente($clienteId);
+        // Busca hosts do cliente
+        $hosts = Host::byCliente($clienteId);
         
         $this->data['title'] = 'Editar Rotina';
         $this->data['cliente'] = $cliente;
-        $this->data['hostes'] = $hostes;
+        $this->data['hosts'] = $hosts;
         $this->data['rotina'] = $rotina;
         $this->data['errors'] = [];
         
@@ -234,10 +234,10 @@ class RotinaBackupController extends Controller
         }
         
         if (!empty($errors)) {
-            $hostes = Host::byCliente($clienteId);
+            $hosts = Host::byCliente($clienteId);
             $this->data['title'] = 'Editar Rotina';
             $this->data['cliente'] = $cliente;
-            $this->data['hostes'] = $hostes;
+            $this->data['hosts'] = $hosts;
             $this->data['rotina'] = array_merge($rotina, $data);
             $this->data['errors'] = $errors;
             $this->render('rotinas/form', $this->data);

@@ -115,50 +115,189 @@ function Load-Configuration {
 function Get-SystemMetrics {
     $metrics = @{}
     
+    # ========== CPU ==========
     try {
-        # CPU
-        $cpu = Get-CimInstance -ClassName Win32_Processor | Measure-Object -Property LoadPercentage -Average
-        $metrics['cpu_percent'] = [math]::Round($cpu.Average, 2)
+        $cpuInfo = Get-CimInstance -ClassName Win32_Processor
+        $cpuAvg = $cpuInfo | Measure-Object -Property LoadPercentage -Average
+        $metrics['cpu_percent'] = [math]::Round($cpuAvg.Average, 2)
+        
+        # Detalhes do processador
+        $cpuFirst = $cpuInfo | Select-Object -First 1
+        $metrics['cpu_info'] = @{
+            name = $cpuFirst.Name.Trim()
+            cores = $cpuFirst.NumberOfCores
+            logical_processors = $cpuFirst.NumberOfLogicalProcessors
+            max_clock_mhz = $cpuFirst.MaxClockSpeed
+            current_clock_mhz = $cpuFirst.CurrentClockSpeed
+            architecture = switch ($cpuFirst.Architecture) {
+                0 { 'x86' }
+                9 { 'x64' }
+                5 { 'ARM' }
+                12 { 'ARM64' }
+                default { 'Unknown' }
+            }
+        }
     }
     catch {
         Write-ServiceLog "Erro ao obter CPU: $_" -Level DEBUG
     }
     
+    # ========== MEMÓRIA ==========
     try {
-        # Memória
         $os = Get-CimInstance -ClassName Win32_OperatingSystem
-        $memoryUsed = $os.TotalVisibleMemorySize - $os.FreePhysicalMemory
-        $metrics['memory_percent'] = [math]::Round(($memoryUsed / $os.TotalVisibleMemorySize) * 100, 2)
-        $metrics['memory_total_mb'] = [math]::Round($os.TotalVisibleMemorySize / 1024, 0)
-        $metrics['memory_used_mb'] = [math]::Round($memoryUsed / 1024, 0)
+        $memoryTotalKB = $os.TotalVisibleMemorySize
+        $memoryFreeKB = $os.FreePhysicalMemory
+        $memoryUsedKB = $memoryTotalKB - $memoryFreeKB
+        
+        $metrics['memory_percent'] = [math]::Round(($memoryUsedKB / $memoryTotalKB) * 100, 2)
+        $metrics['memory_total_mb'] = [math]::Round($memoryTotalKB / 1024, 0)
+        $metrics['memory_used_mb'] = [math]::Round($memoryUsedKB / 1024, 0)
+        $metrics['memory_free_mb'] = [math]::Round($memoryFreeKB / 1024, 0)
+        $metrics['memory_total_gb'] = [math]::Round($memoryTotalKB / 1024 / 1024, 2)
+        
+        # Memória virtual (swap/pagefile)
+        $virtualTotal = $os.TotalVirtualMemorySize
+        $virtualFree = $os.FreeVirtualMemory
+        $virtualUsed = $virtualTotal - $virtualFree
+        $metrics['virtual_memory'] = @{
+            total_mb = [math]::Round($virtualTotal / 1024, 0)
+            used_mb = [math]::Round($virtualUsed / 1024, 0)
+            free_mb = [math]::Round($virtualFree / 1024, 0)
+            percent = [math]::Round(($virtualUsed / $virtualTotal) * 100, 2)
+        }
     }
     catch {
         Write-ServiceLog "Erro ao obter memória: $_" -Level DEBUG
     }
     
+    # ========== DISCOS (TODOS) ==========
     try {
-        # Disco do sistema
-        $sysDrive = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DeviceID='$($env:SystemDrive)'"
-        if ($sysDrive) {
-            $diskUsed = $sysDrive.Size - $sysDrive.FreeSpace
-            $metrics['disk_percent'] = [math]::Round(($diskUsed / $sysDrive.Size) * 100, 2)
-            $metrics['disk_total_gb'] = [math]::Round($sysDrive.Size / 1GB, 2)
-            $metrics['disk_used_gb'] = [math]::Round($diskUsed / 1GB, 2)
+        $allDisks = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DriveType=3"
+        $disksList = @()
+        $totalSize = 0
+        $totalUsed = 0
+        
+        foreach ($disk in $allDisks) {
+            $diskUsed = $disk.Size - $disk.FreeSpace
+            $diskPercent = if ($disk.Size -gt 0) { [math]::Round(($diskUsed / $disk.Size) * 100, 2) } else { 0 }
+            
+            $disksList += @{
+                drive = $disk.DeviceID
+                volume_name = $disk.VolumeName
+                file_system = $disk.FileSystem
+                total_gb = [math]::Round($disk.Size / 1GB, 2)
+                used_gb = [math]::Round($diskUsed / 1GB, 2)
+                free_gb = [math]::Round($disk.FreeSpace / 1GB, 2)
+                percent_used = $diskPercent
+            }
+            
+            $totalSize += $disk.Size
+            $totalUsed += $diskUsed
         }
+        
+        $metrics['disks'] = $disksList
+        $metrics['disk_count'] = $disksList.Count
+        
+        # Para compatibilidade, mantém disk_percent e totais do disco do sistema
+        $sysDrive = $allDisks | Where-Object { $_.DeviceID -eq $env:SystemDrive }
+        if ($sysDrive) {
+            $sysDiskUsed = $sysDrive.Size - $sysDrive.FreeSpace
+            $metrics['disk_percent'] = [math]::Round(($sysDiskUsed / $sysDrive.Size) * 100, 2)
+            $metrics['disk_total_gb'] = [math]::Round($sysDrive.Size / 1GB, 2)
+            $metrics['disk_used_gb'] = [math]::Round($sysDiskUsed / 1GB, 2)
+            $metrics['disk_free_gb'] = [math]::Round($sysDrive.FreeSpace / 1GB, 2)
+        }
+        
+        # Totais de todos os discos
+        $metrics['disk_total_all_gb'] = [math]::Round($totalSize / 1GB, 2)
+        $metrics['disk_used_all_gb'] = [math]::Round($totalUsed / 1GB, 2)
     }
     catch {
-        Write-ServiceLog "Erro ao obter disco: $_" -Level DEBUG
+        Write-ServiceLog "Erro ao obter discos: $_" -Level DEBUG
     }
     
+    # ========== REDE ==========
     try {
-        # Uptime
-        $uptime = (Get-Date) - (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime
+        $networkAdapters = Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration | 
+            Where-Object { $_.IPEnabled -eq $true }
+        
+        $networkList = @()
+        foreach ($adapter in $networkAdapters) {
+            $networkList += @{
+                description = $adapter.Description
+                ip_addresses = @($adapter.IPAddress | Where-Object { $_ })
+                mac_address = $adapter.MACAddress
+                gateway = @($adapter.DefaultIPGateway | Where-Object { $_ })
+                dns_servers = @($adapter.DNSServerSearchOrder | Where-Object { $_ })
+                dhcp_enabled = $adapter.DHCPEnabled
+            }
+        }
+        
+        $metrics['network_adapters'] = $networkList
+        $metrics['network_adapter_count'] = $networkList.Count
+    }
+    catch {
+        Write-ServiceLog "Erro ao obter rede: $_" -Level DEBUG
+    }
+    
+    # ========== UPTIME ==========
+    try {
+        $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem
+        $uptime = (Get-Date) - $osInfo.LastBootUpTime
         $metrics['uptime_seconds'] = [math]::Round($uptime.TotalSeconds, 0)
         $metrics['uptime_days'] = [math]::Round($uptime.TotalDays, 2)
+        $metrics['last_boot'] = $osInfo.LastBootUpTime.ToString("yyyy-MM-dd HH:mm:ss")
     }
     catch {
         Write-ServiceLog "Erro ao obter uptime: $_" -Level DEBUG
     }
+    
+    # ========== SERVIÇOS IMPORTANTES ==========
+    try {
+        $importantServices = @('wuauserv', 'MSSQLSERVER', 'SQLAgent$*', 'W3SVC', 'IISADMIN', 'WinRM', 'Spooler', 'DNS', 'DHCP')
+        $servicesList = @()
+        
+        foreach ($svcPattern in $importantServices) {
+            $services = Get-Service -Name $svcPattern -ErrorAction SilentlyContinue
+            foreach ($svc in $services) {
+                $servicesList += @{
+                    name = $svc.Name
+                    display_name = $svc.DisplayName
+                    status = $svc.Status.ToString()
+                    start_type = $svc.StartType.ToString()
+                }
+            }
+        }
+        
+        if ($servicesList.Count -gt 0) {
+            $metrics['important_services'] = $servicesList
+        }
+    }
+    catch {
+        Write-ServiceLog "Erro ao obter serviços: $_" -Level DEBUG
+    }
+    
+    # ========== INFORMAÇÕES DO SISTEMA ==========
+    try {
+        $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem
+        $bios = Get-CimInstance -ClassName Win32_BIOS
+        
+        $metrics['system_info'] = @{
+            manufacturer = $computerSystem.Manufacturer
+            model = $computerSystem.Model
+            domain = $computerSystem.Domain
+            total_physical_memory_gb = [math]::Round($computerSystem.TotalPhysicalMemory / 1GB, 2)
+            number_of_processors = $computerSystem.NumberOfProcessors
+            bios_serial = $bios.SerialNumber
+            bios_version = $bios.SMBIOSBIOSVersion
+        }
+    }
+    catch {
+        Write-ServiceLog "Erro ao obter info sistema: $_" -Level DEBUG
+    }
+    
+    # ========== TIMESTAMP ==========
+    $metrics['collected_at'] = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     
     return $metrics
 }

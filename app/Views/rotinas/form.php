@@ -73,74 +73,21 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="host_id" class="form-label">Host (Opcional)</label>
+                        <label for="host_id" class="form-label">Host Vinculado</label>
                         <select class="form-select" id="host_id" name="host_id">
                             <option value="">Nenhum (rotina independente)</option>
                             <?php foreach ($hosts as $host): ?>
                                 <option value="<?= $host['id'] ?>" 
-                                        <?= ($rotina['host_id'] ?? '') == $host['id'] ? 'selected' : '' ?>>
+                                        <?= ($rotina['host_id'] ?? ($_GET['host_id'] ?? '')) == $host['id'] ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($host['nome']) ?>
+                                    <?php if (!empty($host['hostname'])): ?> (<?= htmlspecialchars($host['hostname']) ?>)<?php endif; ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <small class="form-text text-muted">Deixe vazio se a rotina não está vinculada a um host específico</small>
-                    </div>
-                    
-                    <hr class="my-4">
-                    <h5 class="mb-3">Informações do Host (Opcional)</h5>
-                    <p class="text-muted small">
-                        Configure as informações do host que executará a rotina. Estas informações podem ser atualizadas automaticamente pelo agente.
-                    </p>
-                    
-                    <?php 
-                        $hostInfo = null;
-                        if (!empty($rotina['host_info'])) {
-                            $hostInfo = is_string($rotina['host_info']) ? json_decode($rotina['host_info'], true) : $rotina['host_info'];
-                        }
-                    ?>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="host_nome" class="form-label">Nome do Host</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="host_nome" 
-                                   name="host_nome" 
-                                   value="<?= htmlspecialchars($hostInfo['nome'] ?? '') ?>"
-                                   placeholder="Ex: SRV-BACKUP-01">
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="host_hostname" class="form-label">Hostname</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="host_hostname" 
-                                   name="host_hostname" 
-                                   value="<?= htmlspecialchars($hostInfo['hostname'] ?? '') ?>"
-                                   placeholder="Ex: srv-backup-01.domain.local">
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="host_ip" class="form-label">Endereço IP</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="host_ip" 
-                                   name="host_ip" 
-                                   value="<?= htmlspecialchars($hostInfo['ip'] ?? '') ?>"
-                                   placeholder="Ex: 192.168.1.100">
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="host_so" class="form-label">Sistema Operacional</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="host_so" 
-                                   name="host_so" 
-                                   value="<?= htmlspecialchars($hostInfo['sistema_operacional'] ?? '') ?>"
-                                   placeholder="Ex: Windows Server 2022">
-                        </div>
+                        <small class="form-text text-muted">
+                            Vincule a rotina a um host para organização. 
+                            Pode ser vinculada automaticamente via telemetria.
+                        </small>
                     </div>
                     
                     <hr class="my-4">
@@ -200,12 +147,13 @@
                 
                 <h6>Nova Arquitetura</h6>
                 <p class="small text-muted">
-                    As rotinas agora são independentes de hostes. Você pode:
+                    As rotinas agora são independentes de hosts. Você pode:
                 </p>
                 <ul class="small text-muted">
                     <li>Criar rotinas sem vincular a um host</li>
                     <li>Configurar múltiplas rotinas para o mesmo host</li>
                     <li>Enviar dados de qualquer host usando a Routine Key</li>
+                    <li>A vinculação pode ser automática via telemetria</li>
                 </ul>
             </div>
         </div>

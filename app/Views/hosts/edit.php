@@ -18,7 +18,7 @@
 <div class="card">
     <div class="card-body">
         <form method="POST" action="<?= path('/clientes/' . $cliente['id'] . '/hosts/' . $host['id']) ?>">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <?= csrf_field() ?>
             
             <?php include __DIR__ . '/_form.php'; ?>
         </form>
