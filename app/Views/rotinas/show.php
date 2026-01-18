@@ -202,11 +202,7 @@
                                 <td><?= $duracao ?: '-' ?></td>
                                 <td>
                                     <?php
-                                        if ($exec['tamanho_bytes']) {
-                                            echo \App\Services\BackupService::formatBytes($exec['tamanho_bytes']);
-                                        } else {
-                                            echo '-';
-                                        }
+                                        echo format_bytes($exec['tamanho_bytes']);
                                     ?>
                                 </td>
                                 <td class="text-center">

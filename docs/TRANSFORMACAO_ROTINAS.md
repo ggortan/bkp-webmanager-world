@@ -316,5 +316,5 @@ A: Sim! Todos os dados existentes são preservados e migrados automaticamente.
 
 ---
 
-**Última atualização:** Janeiro 2024  
+**Última atualização:** Janeiro 2026  
 **Versão do Schema:** 002

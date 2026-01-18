@@ -87,9 +87,9 @@ BEGIN
             LEAVE read_loop;
         END IF;
         
-        -- Gera uma chave única baseada em UUID
+-- Gera uma chave única baseada em random bytes (similar ao método do Model)
         UPDATE rotinas_backup 
-        SET routine_key = CONCAT('rtk_', REPLACE(UUID(), '-', ''))
+        SET routine_key = CONCAT('rtk_', LOWER(HEX(RANDOM_BYTES(14))))
         WHERE id = rotina_id;
     END LOOP;
     

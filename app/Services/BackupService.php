@@ -15,6 +15,9 @@ use App\Database;
 
 class BackupService
 {
+    // Comprimento mínimo para routine_key: 'rtk_' (4) + pelo menos 10 chars hex
+    const ROUTINE_KEY_MIN_LENGTH = 14;
+    
     /**
      * Registra uma execução de backup recebida pela API
      */
@@ -165,8 +168,8 @@ class BackupService
         }
         
         // Valida routine_key se fornecido
-        if ($isNewFormat && strlen($data['routine_key']) < 10) {
-            $errors['routine_key'] = "routine_key inválido";
+        if ($isNewFormat && strlen($data['routine_key']) < self::ROUTINE_KEY_MIN_LENGTH) {
+            $errors['routine_key'] = "routine_key inválido (muito curto)";
         }
         
         // Campos obrigatórios

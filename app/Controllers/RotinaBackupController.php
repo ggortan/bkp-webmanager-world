@@ -157,12 +157,8 @@ class RotinaBackupController extends Controller
             return;
         }
         
-        // Busca últimas execuções
-        $sql = "SELECT * FROM execucoes_backup 
-                WHERE rotina_id = ? 
-                ORDER BY data_inicio DESC 
-                LIMIT 10";
-        $execucoes = \App\Database::fetchAll($sql, [$id]);
+        // Busca últimas execuções usando o model
+        $execucoes = RotinaBackup::getRecentExecutions($id, 10);
         
         // Busca servidor se vinculado
         $servidor = null;

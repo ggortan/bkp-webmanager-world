@@ -77,7 +77,8 @@ class RotinaBackup extends Model
     public static function generateRoutineKey(): string
     {
         do {
-            $key = 'rtk_' . Security::generateToken(32);
+            // Gera 28 caracteres aleatórios + prefixo 'rtk_' = 32 caracteres total
+            $key = 'rtk_' . Security::generateToken(14); // 14 bytes = 28 hex chars
             $exists = self::findByRoutineKey($key);
         } while ($exists);
         
@@ -175,5 +176,18 @@ class RotinaBackup extends Model
         $rotina['ultima_execucao'] = \App\Database::fetch($sql, [$id]);
         
         return $rotina;
+    }
+
+    /**
+     * Retorna últimas execuções de uma rotina
+     */
+    public static function getRecentExecutions(int $rotinaId, int $limit = 10): array
+    {
+        $sql = "SELECT * FROM execucoes_backup 
+                WHERE rotina_id = ? 
+                ORDER BY data_inicio DESC 
+                LIMIT ?";
+        
+        return \App\Database::fetchAll($sql, [$rotinaId, $limit]);
     }
 }
