@@ -22,4 +22,7 @@ Router::group(['prefix' => '/api', 'middleware' => ['api_auth']], function () {
     // Info do cliente
     Router::get('/me', [ApiBackupController::class, 'me']);
     
+    // Rotinas do cliente
+    Router::get('/rotinas', [ApiBackupController::class, 'rotinas']);
+    
 });

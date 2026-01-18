@@ -94,3 +94,25 @@ if (!function_exists('e')) {
         return htmlspecialchars($value ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 }
+
+if (!function_exists('format_bytes')) {
+    /**
+     * Formata tamanho em bytes para exibição
+     */
+    function format_bytes(?int $bytes): string
+    {
+        if ($bytes === null || $bytes === 0) {
+            return '-';
+        }
+        
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = 0;
+        
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        
+        return round($bytes, 2) . ' ' . $units[$i];
+    }
+}

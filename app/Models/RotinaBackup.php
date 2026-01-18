@@ -5,12 +5,39 @@
 
 namespace App\Models;
 
+use App\Helpers\Security;
+
 class RotinaBackup extends Model
 {
     protected static string $table = 'rotinas_backup';
 
     /**
-     * Lista rotinas de um servidor
+     * Lista rotinas de um cliente
+     */
+    public static function byCliente(int $clienteId): array
+    {
+        return self::where(['cliente_id' => $clienteId], 'nome ASC');
+    }
+
+    /**
+     * Lista rotinas ativas de um cliente
+     */
+    public static function ativasByCliente(int $clienteId): array
+    {
+        $sql = "SELECT * FROM rotinas_backup WHERE cliente_id = ? AND ativa = 1 ORDER BY nome ASC";
+        return \App\Database::fetchAll($sql, [$clienteId]);
+    }
+
+    /**
+     * Encontra rotina pela routine_key
+     */
+    public static function findByRoutineKey(string $routineKey): ?array
+    {
+        return self::findBy('routine_key', $routineKey);
+    }
+
+    /**
+     * Lista rotinas de um servidor (compatibilidade)
      */
     public static function byServidor(int $servidorId): array
     {
@@ -18,7 +45,7 @@ class RotinaBackup extends Model
     }
 
     /**
-     * Lista rotinas ativas de um servidor
+     * Lista rotinas ativas de um servidor (compatibilidade)
      */
     public static function ativasByServidor(int $servidorId): array
     {
@@ -27,7 +54,16 @@ class RotinaBackup extends Model
     }
 
     /**
-     * Encontra rotina pelo nome e servidor
+     * Encontra rotina pelo nome e cliente
+     */
+    public static function findByNomeAndCliente(string $nome, int $clienteId): ?array
+    {
+        $sql = "SELECT * FROM rotinas_backup WHERE nome = ? AND cliente_id = ?";
+        return \App\Database::fetch($sql, [$nome, $clienteId]);
+    }
+
+    /**
+     * Encontra rotina pelo nome e servidor (compatibilidade)
      */
     public static function findByNomeAndServidor(string $nome, int $servidorId): ?array
     {
@@ -36,7 +72,53 @@ class RotinaBackup extends Model
     }
 
     /**
-     * Encontra ou cria rotina
+     * Gera uma routine_key única
+     * Formato: 'rtk_' (4 chars) + 28 hex chars = 32 chars total
+     */
+    public static function generateRoutineKey(): string
+    {
+        do {
+            // Security::generateToken(14) gera 14 bytes = 28 hex chars
+            // Com prefixo 'rtk_' (4 chars) = 32 chars total
+            $key = 'rtk_' . Security::generateToken(14);
+            $exists = self::findByRoutineKey($key);
+        } while ($exists);
+        
+        return $key;
+    }
+
+    /**
+     * Cria uma nova rotina vinculada ao cliente
+     */
+    public static function createForCliente(int $clienteId, string $nome, array $extraData = []): array
+    {
+        $data = array_merge([
+            'cliente_id' => $clienteId,
+            'nome' => $nome,
+            'routine_key' => self::generateRoutineKey(),
+            'ativa' => 1
+        ], $extraData);
+        
+        $id = self::create($data);
+        return self::find($id);
+    }
+
+    /**
+     * Encontra ou cria rotina vinculada ao cliente
+     */
+    public static function findOrCreateForCliente(int $clienteId, string $nome, array $extraData = []): array
+    {
+        $rotina = self::findByNomeAndCliente($nome, $clienteId);
+        
+        if ($rotina) {
+            return $rotina;
+        }
+        
+        return self::createForCliente($clienteId, $nome, $extraData);
+    }
+
+    /**
+     * Encontra ou cria rotina (compatibilidade com API antiga)
      */
     public static function findOrCreate(int $servidorId, string $nome, array $extraData = []): array
     {
@@ -46,9 +128,17 @@ class RotinaBackup extends Model
             return $rotina;
         }
         
+        // Busca cliente_id do servidor
+        $servidor = \App\Models\Servidor::find($servidorId);
+        if (!$servidor) {
+            throw new \Exception("Servidor não encontrado: $servidorId");
+        }
+        
         $data = array_merge([
+            'cliente_id' => $servidor['cliente_id'],
             'servidor_id' => $servidorId,
             'nome' => $nome,
+            'routine_key' => self::generateRoutineKey(),
             'ativa' => 1
         ], $extraData);
         
@@ -88,5 +178,18 @@ class RotinaBackup extends Model
         $rotina['ultima_execucao'] = \App\Database::fetch($sql, [$id]);
         
         return $rotina;
+    }
+
+    /**
+     * Retorna últimas execuções de uma rotina
+     */
+    public static function getRecentExecutions(int $rotinaId, int $limit = 10): array
+    {
+        $sql = "SELECT * FROM execucoes_backup 
+                WHERE rotina_id = ? 
+                ORDER BY data_inicio DESC 
+                LIMIT ?";
+        
+        return \App\Database::fetchAll($sql, [$rotinaId, $limit]);
     }
 }

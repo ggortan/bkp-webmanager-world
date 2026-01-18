@@ -7,6 +7,7 @@ use App\Router;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\ClienteController;
+use App\Controllers\RotinaBackupController;
 use App\Controllers\UsuarioController;
 use App\Controllers\BackupController;
 use App\Controllers\RelatorioController;
@@ -47,6 +48,16 @@ Router::group(['middleware' => ['auth', 'csrf']], function () {
     Router::post('/clientes/{id}', [ClienteController::class, 'update'], ['operator']);
     Router::post('/clientes/{id}/delete', [ClienteController::class, 'destroy'], ['admin']);
     Router::post('/clientes/{id}/regenerar-api-key', [ClienteController::class, 'regenerateApiKey'], ['admin']);
+    
+    // Rotinas de Backup
+    Router::get('/clientes/{clienteId}/rotinas', [RotinaBackupController::class, 'index']);
+    Router::get('/clientes/{clienteId}/rotinas/criar', [RotinaBackupController::class, 'create'], ['operator']);
+    Router::post('/clientes/{clienteId}/rotinas', [RotinaBackupController::class, 'store'], ['operator']);
+    Router::get('/clientes/{clienteId}/rotinas/{id}', [RotinaBackupController::class, 'show']);
+    Router::get('/clientes/{clienteId}/rotinas/{id}/editar', [RotinaBackupController::class, 'edit'], ['operator']);
+    Router::post('/clientes/{clienteId}/rotinas/{id}', [RotinaBackupController::class, 'update'], ['operator']);
+    Router::post('/clientes/{clienteId}/rotinas/{id}/delete', [RotinaBackupController::class, 'destroy'], ['admin']);
+    Router::post('/clientes/{clienteId}/rotinas/{id}/regenerar-key', [RotinaBackupController::class, 'regenerateKey'], ['admin']);
     
     // Usuários (apenas admin)
     Router::get('/usuarios', [UsuarioController::class, 'index'], ['admin']);

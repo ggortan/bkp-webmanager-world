@@ -39,8 +39,16 @@ O **Backup WebManager** é uma aplicação web corporativa que centraliza o moni
 ### Gestão de Clientes
 - Cadastro completo de clientes
 - API Key individual por cliente
-- Servidores vinculados automaticamente
+- Servidores vinculados automaticamente (compatibilidade)
 - Configuração de relatórios
+
+### Gestão de Rotinas de Backup ⭐ NOVO
+- Rotinas independentes vinculadas diretamente aos clientes
+- Routine Key única para cada rotina
+- Suporte a múltiplas rotinas por host
+- Informações do host (nome, IP, SO) armazenadas
+- Vincular ou não a servidores (opcional)
+- Gerenciamento completo via interface web
 
 ### Histórico de Backups
 - Listagem com filtros avançados
@@ -62,6 +70,9 @@ O **Backup WebManager** é uma aplicação web corporativa que centraliza o moni
 - Endpoint seguro para recebimento de dados
 - Autenticação via API Key
 - Validação completa dos dados
+- **Novo formato baseado em Routine Key** ⭐
+- Compatibilidade com formato antigo mantida
+- Endpoint para listar rotinas do cliente
 
 ## 🛠 Stack Tecnológica
 
@@ -199,6 +210,34 @@ Authorization: Bearer {API_KEY}
 Content-Type: application/json
 ```
 
+#### Novo Formato (Recomendado) - Baseado em Routine Key
+
+**Body:**
+```json
+{
+    "routine_key": "rtk_abc123xyz456",
+    "data_inicio": "2024-01-15 22:00:00",
+    "data_fim": "2024-01-15 22:45:00",
+    "status": "sucesso",
+    "tamanho_bytes": 5368709120,
+    "destino": "\\\\NAS\\Backups\\SQL\\20240115",
+    "mensagem_erro": null,
+    "tipo_backup": "full",
+    "host_info": {
+        "nome": "SRV-BACKUP-01",
+        "hostname": "srv-backup-01.domain.local",
+        "ip": "192.168.1.100",
+        "sistema_operacional": "Windows Server 2022"
+    },
+    "detalhes": {
+        "database": "ERP_Producao",
+        "compression": true
+    }
+}
+```
+
+#### Formato Antigo (Compatibilidade Mantida)
+
 **Body:**
 ```json
 {
@@ -218,6 +257,17 @@ Content-Type: application/json
 }
 ```
 
+**Campos obrigatórios (novo formato):**
+- `routine_key` - Chave única da rotina (obtida na interface web)
+- `data_inicio` - Data/hora de início
+- `status` - Status da execução
+
+**Campos obrigatórios (formato antigo):**
+- `servidor` - Nome do servidor
+- `rotina` - Nome da rotina
+- `data_inicio` - Data/hora de início
+- `status` - Status da execução
+
 **Status possíveis:**
 - `sucesso` - Backup concluído com sucesso
 - `falha` - Backup falhou
@@ -231,6 +281,42 @@ Content-Type: application/json
     "message": "Execução registrada com sucesso",
     "execucao_id": 123,
     "status": 201
+}
+```
+
+### Endpoint: Listar Rotinas do Cliente
+
+```
+GET /api/rotinas
+```
+
+**Headers:**
+```
+Authorization: Bearer {API_KEY}
+```
+
+**Resposta:**
+```json
+{
+    "success": true,
+    "rotinas": [
+        {
+            "id": 1,
+            "routine_key": "rtk_abc123xyz456",
+            "nome": "Backup_SQL_Diario",
+            "tipo": "full",
+            "destino": "\\\\NAS\\Backups",
+            "agendamento": "Diário às 22h",
+            "host_info": {
+                "nome": "SRV-SQL-01",
+                "hostname": "srv-sql-01.domain.local",
+                "ip": "192.168.1.50",
+                "sistema_operacional": "Windows Server 2022"
+            },
+            "ativa": true
+        }
+    ],
+    "total": 1
 }
 ```
 
@@ -249,6 +335,34 @@ GET /api/status
     "timestamp": "2024-01-15T22:50:00-03:00"
 }
 ```
+
+## 🔄 Nova Arquitetura: Sistema Baseado em Rotinas
+
+A partir da versão 2.0, o sistema foi transformado para uma arquitetura baseada em **rotinas independentes**.
+
+### Mudanças Principais
+
+- **Rotinas Independentes**: As rotinas de backup agora são vinculadas diretamente aos clientes, não mais a servidores específicos
+- **Routine Key**: Cada rotina possui uma chave única (`routine_key`) para identificação
+- **Flexibilidade**: O mesmo host pode ter múltiplas rotinas cadastradas
+- **Abrangência**: Não se limita a servidores - qualquer host pode enviar dados de backup
+
+### Benefícios
+
+1. **Maior Flexibilidade**: Rotinas não dependem de servidores
+2. **Múltiplas Rotinas**: Mesmo host pode ter várias rotinas independentes
+3. **Qualquer Host**: Servidores, estações, VMs, containers, etc.
+4. **Configuração Simplificada**: Usa apenas a routine_key
+5. **Compatibilidade**: Formato antigo continua funcionando
+
+### Como Usar
+
+1. **Criar Cliente**: Acesse Clientes > Criar Novo
+2. **Criar Rotina**: Acesse o cliente > Rotinas > Nova Rotina
+3. **Copiar Chaves**: Copie a API Key do cliente e a Routine Key da rotina
+4. **Configurar Agente**: Configure o agente com as chaves copiadas
+
+Veja a [documentação completa da transformação](docs/TRANSFORMACAO_ROTINAS.md) para mais detalhes.
 
 ## 💻 Script PowerShell
 
