@@ -57,6 +57,66 @@ class BackupService
                 $host = Host::find($rotina['host_id']);
             }
             
+            // Se não tem host vinculado mas tem host_info, cria ou encontra o host automaticamente
+            if (!$host && !empty($data['host_info'])) {
+                $hostData = is_array($data['host_info']) ? $data['host_info'] : json_decode($data['host_info'], true);
+                
+                if (!empty($hostData['name']) || !empty($hostData['nome'])) {
+                    $hostNome = $hostData['name'] ?? $hostData['nome'];
+                    
+                    // Tenta encontrar host existente pelo nome
+                    $existingHost = Host::findByNomeAndCliente($hostNome, $cliente['id']);
+                    
+                    if ($existingHost) {
+                        $host = $existingHost;
+                        
+                        // Atualiza informações do host se fornecidas
+                        $updateData = [];
+                        if (!empty($hostData['ip']) && $hostData['ip'] !== $existingHost['ip']) {
+                            $updateData['ip'] = $hostData['ip'];
+                        }
+                        if (!empty($hostData['hostname']) && $hostData['hostname'] !== $existingHost['hostname']) {
+                            $updateData['hostname'] = $hostData['hostname'];
+                        }
+                        if (!empty($hostData['os']) || !empty($hostData['sistema_operacional'])) {
+                            $so = $hostData['os'] ?? $hostData['sistema_operacional'];
+                            if ($so !== $existingHost['sistema_operacional']) {
+                                $updateData['sistema_operacional'] = $so;
+                            }
+                        }
+                        if (!empty($updateData)) {
+                            Host::update($host['id'], $updateData);
+                        }
+                    } else {
+                        // Cria novo host
+                        $newHostData = [
+                            'cliente_id' => $cliente['id'],
+                            'nome' => $hostNome,
+                            'hostname' => $hostData['hostname'] ?? $hostNome,
+                            'ip' => $hostData['ip'] ?? null,
+                            'sistema_operacional' => $hostData['os'] ?? $hostData['sistema_operacional'] ?? null,
+                            'tipo' => $hostData['tipo'] ?? 'server',
+                            'ativo' => 1,
+                            'observacoes' => 'Criado automaticamente via API'
+                        ];
+                        
+                        $hostId = Host::create($newHostData);
+                        $host = Host::find($hostId);
+                        
+                        LogService::api('Host criado automaticamente via API', [
+                            'cliente_id' => $cliente['id'],
+                            'host_id' => $hostId,
+                            'host_nome' => $hostNome
+                        ]);
+                    }
+                    
+                    // Vincula o host à rotina
+                    if ($host && !$rotina['host_id']) {
+                        RotinaBackup::update($rotina['id'], ['host_id' => $host['id']]);
+                    }
+                }
+            }
+            
             // Prepara host_info para armazenar na execução (se disponível)
             $hostInfo = null;
             if (!empty($data['host_info'])) {
