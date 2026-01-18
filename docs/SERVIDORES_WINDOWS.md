@@ -133,30 +133,36 @@ O agente envia dados no seguinte formato:
 
 ```json
 {
-    "routine_key": "ABC123XYZ",
-    "status": "success",
-    "size_bytes": 1073741824,
-    "duration_seconds": 3600,
-    "details": "Backup concluído com sucesso",
-    "executed_at": "2025-01-15T03:00:00Z",
+    "routine_key": "rtk_abc123xyz456",
+    "data_inicio": "2025-01-15 03:00:00",
+    "data_fim": "2025-01-15 03:45:00",
+    "status": "sucesso",
+    "tamanho_bytes": 1073741824,
+    "destino": "\\\\NAS\\Backups",
+    "mensagem_erro": "",
     "host_info": {
-        "name": "SERVER01",
+        "nome": "SERVER01",
         "ip": "192.168.1.100",
-        "os": "Windows Server 2022"
+        "sistema_operacional": "Windows Server 2022"
+    },
+    "detalhes": {
+        "tipo_backup": "full"
     }
 }
 ```
 
 Campos obrigatórios:
 - `routine_key`: Chave da rotina cadastrada no WebManager
-- `status`: success, warning, error
-- `executed_at`: Data/hora da execução
+- `data_inicio`: Data/hora de início (formato: `Y-m-d H:i:s`)
+- `status`: `sucesso`, `falha`, `alerta`, `executando`
 
 Campos opcionais:
-- `size_bytes`: Tamanho em bytes
-- `duration_seconds`: Duração em segundos
-- `details`: Mensagem ou log resumido
-- `host_info`: Objeto com informações do host (name, ip, os)
+- `data_fim`: Data/hora de término
+- `tamanho_bytes`: Tamanho em bytes
+- `destino`: Caminho do destino do backup
+- `mensagem_erro`: Mensagem de erro (se houver)
+- `host_info`: Objeto com informações do host
+- `detalhes`: Objeto JSON com dados adicionais
 
 ## Autenticação
 

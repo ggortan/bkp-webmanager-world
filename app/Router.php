@@ -161,8 +161,19 @@ class Router
      */
     private static function isApiRequest(): bool
     {
+        global $config;
+        
         $uri = $_SERVER['REQUEST_URI'] ?? '';
-        return strpos($uri, '/api/') === 0;
+        
+        // Se tiver basePath configurado, verifica com ele
+        if (isset($config) && isset($config['app']['url'])) {
+            $basePath = parse_url($config['app']['url'], PHP_URL_PATH);
+            if ($basePath && $basePath !== '/') {
+                return strpos($uri, $basePath . '/api/') === 0 || strpos($uri, $basePath . '/api') === 0;
+            }
+        }
+        
+        return strpos($uri, '/api/') === 0 || strpos($uri, '/api') === 0;
     }
 
     /**

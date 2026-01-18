@@ -49,6 +49,12 @@ function Write-Warn { param($Message) Write-Host "[AVISO] $Message" -ForegroundC
 # Remove barra final da URL se existir
 $ApiUrl = $ApiUrl.TrimEnd('/')
 
+# Configura TLS 1.2 (necessário para muitos servidores HTTPS modernos)
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# Ignora erros de certificado SSL se necessário (descomente se tiver problemas de certificado)
+# [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Teste da API - Backup WebManager" -ForegroundColor Cyan
@@ -84,13 +90,63 @@ function Test-Connectivity {
         if ($tcpTest.TcpTestSucceeded) {
             Write-Success "Conexao TCP estabelecida com sucesso"
             
-            # Teste HTTP básico
-            Write-Info "Testando resposta HTTP..."
-            $response = Invoke-WebRequest -Uri $ApiUrl -Method Head -TimeoutSec 10 -UseBasicParsing -ErrorAction SilentlyContinue
-            
-            if ($response.StatusCode -lt 500) {
-                Write-Success "Servidor HTTP respondendo (Status: $($response.StatusCode))"
-                return $true
+            # Teste HTTP via endpoint /status (público)
+            Write-Info "Testando resposta HTTP via /status..."
+            try {
+                $statusUrl = "$ApiUrl/status"
+                Write-Info "URL: $statusUrl"
+                
+                # Usa Invoke-WebRequest com mais opções de compatibilidade
+                $webResponse = Invoke-WebRequest -Uri $statusUrl -Method Get -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+                
+                if ($webResponse.StatusCode -eq 200) {
+                    Write-Success "API respondendo corretamente (Status: 200)"
+                    try {
+                        $jsonResponse = $webResponse.Content | ConvertFrom-Json
+                        if ($jsonResponse.status) {
+                            Write-Info "Status da API: $($jsonResponse.status)"
+                        }
+                    }
+                    catch {
+                        Write-Info "Resposta recebida (nao-JSON)"
+                    }
+                    return $true
+                }
+                else {
+                    Write-Success "Servidor respondendo (Status: $($webResponse.StatusCode))"
+                    return $true
+                }
+            }
+            catch {
+                $errorMsg = $_.Exception.Message
+                Write-Warn "Erro ao acessar /status: $errorMsg"
+                
+                # Verifica se é erro de SSL/TLS
+                if ($errorMsg -match "SSL|TLS|certificate|trust") {
+                    Write-Warn "Possivel problema de certificado SSL"
+                    Write-Info "Tente executar: [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { `$true }"
+                }
+                
+                # Tenta um GET simples na URL base
+                Write-Info "Tentando conexao na URL base..."
+                try {
+                    $basicResponse = Invoke-WebRequest -Uri $ApiUrl -Method Get -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+                    if ($basicResponse.StatusCode -lt 500) {
+                        Write-Success "Servidor HTTP respondendo (Status: $($basicResponse.StatusCode))"
+                        return $true
+                    }
+                }
+                catch {
+                    if ($_.Exception.Response) {
+                        $statusCode = [int]$_.Exception.Response.StatusCode
+                        if ($statusCode -lt 500) {
+                            Write-Success "Servidor respondendo (Status: $statusCode)"
+                            return $true
+                        }
+                    }
+                    Write-Fail "Nenhuma resposta HTTP valida"
+                    return $false
+                }
             }
         }
         else {
@@ -189,17 +245,17 @@ function Test-SendBackup {
         "Accept" = "application/json"
     }
     
-    # Dados de teste
+    # Dados de teste - usando campos corretos da API
     $testData = @{
         routine_key = $RoutineKey
-        status = "success"
-        size_bytes = 1073741824  # 1 GB
-        duration_seconds = 3600  # 1 hora
-        details = "[TESTE] Backup de teste enviado via Test-BackupApi.ps1 em $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-        executed_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        status = "sucesso"  # Valores: sucesso, falha, alerta, executando
+        data_inicio = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+        data_fim = (Get-Date).AddHours(1).ToString("yyyy-MM-dd HH:mm:ss")
+        tamanho_bytes = 1073741824  # 1 GB
+        detalhes = "[TESTE] Backup de teste enviado via Test-BackupApi.ps1 em $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
         host_info = @{
             name = $env:COMPUTERNAME
-            ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne "127.0.0.1" } | Select-Object -First 1).IPAddress
+            ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne "127.0.0.1" -and $_.IPAddress -notlike "169.*" } | Select-Object -First 1).IPAddress
             os = (Get-CimInstance Win32_OperatingSystem).Caption
         }
     }
