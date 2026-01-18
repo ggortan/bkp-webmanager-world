@@ -8,11 +8,11 @@ O Agente de Backup é uma solução client-side para coletar automaticamente inf
 
 - ✅ **Coleta automática** de dados de backup do Windows Server Backup
 - ✅ **Integração com Veeam** Backup & Replication
-- ✅ **Execução agendada** via Windows Task Scheduler
+- ✅ **Serviço Windows** - Roda como serviço passivo em background
+- ✅ **Telemetria** - Monitoramento de status online/offline do host
 - ✅ **Sistema de retry** automático em caso de falha
 - ✅ **Logs detalhados** com rotação automática
 - ✅ **Filtros configuráveis** para jobs e notificações
-- ✅ **Pode ser compilado** em executável (.exe)
 
 ---
 
@@ -35,11 +35,57 @@ O Agente de Backup é uma solução client-side para coletar automaticamente inf
 
 ## 📦 Instalação
 
-### Método 1: Instalação Assistida (Recomendado)
+### Método 1: Como Serviço Windows (Recomendado)
 
-1. **Baixe os arquivos do agente** para uma pasta temporária
+O agente pode ser instalado como um serviço Windows que roda em background, gerenciando tanto a telemetria quanto a coleta de backups.
 
-2. **Execute o instalador** como Administrador:
+1. **Baixe os arquivos do agente** para uma pasta (ex: `C:\BackupAgent`)
+
+2. **Edite o arquivo de configuração:**
+
+```powershell
+# Copie o exemplo
+Copy-Item "config\config.service.example.json" "config\config.json"
+
+# Edite com o bloco de notas
+notepad "config\config.json"
+```
+
+3. **Instale o serviço** como Administrador:
+
+```powershell
+# Instala e baixa o NSSM automaticamente
+.\Install-BackupAgentService.ps1 -Action install -DownloadNssm
+
+# Verifique o status
+.\Install-BackupAgentService.ps1 -Action status
+
+# Inicie o serviço
+.\Install-BackupAgentService.ps1 -Action start
+```
+
+4. **Comandos do serviço:**
+
+```powershell
+# Parar serviço
+.\Install-BackupAgentService.ps1 -Action stop
+
+# Reiniciar serviço
+.\Install-BackupAgentService.ps1 -Action restart
+
+# Ver status
+.\Install-BackupAgentService.ps1 -Action status
+
+# Editar configuração
+.\Install-BackupAgentService.ps1 -Action configure
+
+# Desinstalar
+.\Install-BackupAgentService.ps1 -Action uninstall
+```
+
+### Método 2: Instalação com Script Assistido
+
+1. **Execute o instalador** como Administrador:
 
 ```powershell
 # Instalação básica (apenas Windows Server Backup)
@@ -69,7 +115,7 @@ O Agente de Backup é uma solução client-side para coletar automaticamente inf
     -VeeamServer "veeam-server.local"
 ```
 
-### Método 2: Instalação Manual
+### Método 3: Instalação Manual
 
 1. **Crie a estrutura de diretórios:**
 
@@ -81,17 +127,76 @@ New-Item -ItemType Directory -Path "C:\BackupAgent\logs" -Force
 ```
 
 2. **Copie os arquivos:**
-   - `BackupAgent.ps1` → `C:\BackupAgent\`
+   - `BackupAgentService.ps1` → `C:\BackupAgent\`
+   - `Install-BackupAgentService.ps1` → `C:\BackupAgent\`
    - `modules\*.psm1` → `C:\BackupAgent\modules\`
-   - `config\config.example.json` → `C:\BackupAgent\config\config.json`
+   - `config\config.service.example.json` → `C:\BackupAgent\config\config.json`
 
 3. **Configure o arquivo** `config.json` (veja seção [Configuração](#configuração))
 
-4. **Crie a tarefa agendada** (veja seção [Agendamento](#agendamento))
+4. **Instale o serviço** (veja Método 1)
 
 ---
 
-## ⚙️ Configuração
+## ⚙️ Configuração do Serviço
+
+Edite o arquivo `C:\BackupAgent\config\config.json`:
+
+```json
+{
+  "api_url": "https://backup.seudominio.com",
+  "api_token": "COLE_AQUI_A_API_KEY_DO_CLIENTE",
+  "host_name": "SRV-EXEMPLO-01",
+  
+  "telemetry": {
+    "enabled": true,
+    "interval_minutes": 5
+  },
+  
+  "backup": {
+    "check_interval_minutes": 15,
+    "collectors": ["wsb", "veeam"]
+  },
+  
+  "routines": [
+    {
+      "routine_key": "rtk_SUA_ROUTINE_KEY",
+      "source": "wsb",
+      "job_name": ""
+    }
+  ]
+}
+```
+
+### Parâmetros
+
+| Parâmetro | Descrição |
+|-----------|-----------|
+| `api_url` | URL base da API do Backup Manager |
+| `api_token` | Token de autenticação (API Key do cliente) |
+| `host_name` | Nome identificador deste host |
+| `telemetry.enabled` | Habilita envio de telemetria (heartbeat) |
+| `telemetry.interval_minutes` | Intervalo entre envios de telemetria |
+| `backup.check_interval_minutes` | Intervalo de verificação de backups |
+| `backup.collectors` | Coletores habilitados: `wsb`, `veeam` |
+| `routines` | Lista de rotinas de backup vinculadas |
+
+---
+
+## 📡 Telemetria
+
+O serviço envia automaticamente dados de telemetria para monitorar se o host está online:
+
+- **CPU** - Uso percentual
+- **Memória** - Uso percentual e total
+- **Disco** - Uso percentual do disco do sistema
+- **Uptime** - Tempo desde última reinicialização
+
+O host é marcado como **offline** quando não envia telemetria por um período configurável no servidor.
+
+---
+
+## ⚙️ Configuração Legada
 
 Edite o arquivo `C:\BackupAgent\config\config.json`:
 

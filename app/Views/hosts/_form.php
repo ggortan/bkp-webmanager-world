@@ -102,6 +102,72 @@
     <small class="form-text text-muted">Hosts inativos não aparecem nos seletores de rotinas</small>
 </div>
 
+<!-- Configurações de Telemetria -->
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="bi bi-broadcast me-2"></i>Configurações de Telemetria
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <div class="form-check">
+                <input type="checkbox" 
+                       class="form-check-input" 
+                       id="telemetry_enabled" 
+                       name="telemetry_enabled" 
+                       value="1"
+                       <?= ($host['telemetry_enabled'] ?? 0) ? 'checked' : '' ?>>
+                <label class="form-check-label" for="telemetry_enabled">
+                    Habilitar monitoramento de telemetria
+                </label>
+            </div>
+            <small class="form-text text-muted">
+                Quando habilitado, o sistema monitorará se o host está online através dos heartbeats enviados pelo agente.
+            </small>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="telemetry_interval_minutes" class="form-label">Intervalo de telemetria (minutos)</label>
+                    <input type="number" 
+                           class="form-control" 
+                           id="telemetry_interval_minutes" 
+                           name="telemetry_interval_minutes" 
+                           value="<?= htmlspecialchars($host['telemetry_interval_minutes'] ?? '5') ?>"
+                           min="1"
+                           max="60">
+                    <small class="form-text text-muted">Frequência esperada do envio de telemetria pelo agente.</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="telemetry_offline_threshold" class="form-label">Threshold offline (falhas)</label>
+                    <input type="number" 
+                           class="form-control" 
+                           id="telemetry_offline_threshold" 
+                           name="telemetry_offline_threshold" 
+                           value="<?= htmlspecialchars($host['telemetry_offline_threshold'] ?? '3') ?>"
+                           min="1"
+                           max="20">
+                    <small class="form-text text-muted">
+                        Número de intervalos sem resposta para considerar o host offline.
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <?php 
+        $interval = (int)($host['telemetry_interval_minutes'] ?? 5);
+        $threshold = (int)($host['telemetry_offline_threshold'] ?? 3);
+        $offlineAfter = $interval * $threshold;
+        ?>
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            Com a configuração atual, o host será considerado <strong>offline</strong> após <strong><?= $offlineAfter ?> minutos</strong> sem enviar telemetria.
+        </div>
+    </div>
+</div>
+
 <div class="d-flex gap-2">
     <button type="submit" class="btn btn-primary">
         <i class="bi bi-check-circle me-1"></i>Salvar

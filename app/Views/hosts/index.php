@@ -45,6 +45,7 @@
                         <th>Hostname/IP</th>
                         <th>Sistema Operacional</th>
                         <th class="text-center">Rotinas</th>
+                        <th class="text-center">Conexão</th>
                         <th class="text-center">Status</th>
                         <th class="text-end">Ações</th>
                     </tr>
@@ -84,6 +85,25 @@
                                 <span class="badge bg-info"><?= $host['total_rotinas'] ?></span>
                             <?php else: ?>
                                 <span class="text-muted">0</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-center">
+                            <?php 
+                            $onlineStatus = $host['online_status'] ?? 'unknown';
+                            $lastSeen = $host['last_seen_at'] ?? null;
+                            ?>
+                            <?php if ($onlineStatus === 'online'): ?>
+                                <span class="badge bg-success" title="Último contato: <?= $lastSeen ? date('d/m/Y H:i', strtotime($lastSeen)) : 'N/A' ?>">
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Online
+                                </span>
+                            <?php elseif ($onlineStatus === 'offline'): ?>
+                                <span class="badge bg-danger" title="Último contato: <?= $lastSeen ? date('d/m/Y H:i', strtotime($lastSeen)) : 'N/A' ?>">
+                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary" title="Sem telemetria">
+                                    <i class="bi bi-question-circle me-1"></i>Desconhecido
+                                </span>
                             <?php endif; ?>
                         </td>
                         <td class="text-center">

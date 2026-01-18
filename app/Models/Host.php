@@ -139,4 +139,114 @@ class Host extends Model
     {
         return self::withStats($id);
     }
+
+    /**
+     * Atualiza status de telemetria (último contato)
+     */
+    public static function updateTelemetry(int $id, array $telemetryData = []): bool
+    {
+        $updateData = [
+            'last_seen_at' => date('Y-m-d H:i:s'),
+            'online_status' => 'online'
+        ];
+        
+        if (!empty($telemetryData)) {
+            $updateData['telemetry_data'] = json_encode($telemetryData);
+        }
+        
+        return self::update($id, $updateData);
+    }
+
+    /**
+     * Verifica e atualiza status offline de hosts
+     * Hosts que não enviam telemetria por mais do que seu threshold são marcados offline
+     */
+    public static function checkOfflineHosts(): int
+    {
+        $sql = "UPDATE hosts 
+                SET online_status = 'offline' 
+                WHERE telemetry_enabled = 1 
+                AND online_status = 'online'
+                AND last_seen_at IS NOT NULL
+                AND last_seen_at < DATE_SUB(NOW(), 
+                    INTERVAL (telemetry_interval_minutes * telemetry_offline_threshold) MINUTE
+                )";
+        
+        return \App\Database::execute($sql);
+    }
+
+    /**
+     * Lista hosts offline
+     */
+    public static function offlineHosts(int $clienteId = null): array
+    {
+        $sql = "SELECT h.*, c.nome as cliente_nome 
+                FROM hosts h
+                LEFT JOIN clientes c ON h.cliente_id = c.id
+                WHERE h.telemetry_enabled = 1 
+                AND h.online_status = 'offline'
+                AND h.ativo = 1";
+        
+        $params = [];
+        
+        if ($clienteId) {
+            $sql .= " AND h.cliente_id = ?";
+            $params[] = $clienteId;
+        }
+        
+        $sql .= " ORDER BY h.last_seen_at ASC";
+        
+        return \App\Database::fetchAll($sql, $params);
+    }
+
+    /**
+     * Lista hosts online
+     */
+    public static function onlineHosts(int $clienteId = null): array
+    {
+        $sql = "SELECT h.*, c.nome as cliente_nome 
+                FROM hosts h
+                LEFT JOIN clientes c ON h.cliente_id = c.id
+                WHERE h.online_status = 'online'
+                AND h.ativo = 1";
+        
+        $params = [];
+        
+        if ($clienteId) {
+            $sql .= " AND h.cliente_id = ?";
+            $params[] = $clienteId;
+        }
+        
+        $sql .= " ORDER BY h.nome ASC";
+        
+        return \App\Database::fetchAll($sql, $params);
+    }
+
+    /**
+     * Retorna resumo de status de hosts por cliente
+     */
+    public static function statusSummary(int $clienteId = null): array
+    {
+        $sql = "SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN online_status = 'online' THEN 1 ELSE 0 END) as online,
+                    SUM(CASE WHEN online_status = 'offline' THEN 1 ELSE 0 END) as offline,
+                    SUM(CASE WHEN online_status = 'unknown' OR online_status IS NULL THEN 1 ELSE 0 END) as unknown
+                FROM hosts 
+                WHERE ativo = 1";
+        
+        $params = [];
+        
+        if ($clienteId) {
+            $sql .= " AND cliente_id = ?";
+            $params[] = $clienteId;
+        }
+        
+        return \App\Database::fetch($sql, $params) ?: [
+            'total' => 0,
+            'online' => 0,
+            'offline' => 0,
+            'unknown' => 0
+        ];
+    }
 }

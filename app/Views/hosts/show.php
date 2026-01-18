@@ -127,6 +127,107 @@
             </div>
         </div>
         
+        <!-- Card de Telemetria/Conexão -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-broadcast me-2"></i>Status de Conexão
+            </div>
+            <div class="card-body">
+                <?php 
+                $onlineStatus = $host['online_status'] ?? 'unknown';
+                $lastSeen = $host['last_seen_at'] ?? null;
+                $telemetryEnabled = $host['telemetry_enabled'] ?? 0;
+                $telemetryInterval = $host['telemetry_interval_minutes'] ?? 5;
+                $telemetryThreshold = $host['telemetry_offline_threshold'] ?? 3;
+                ?>
+                
+                <div class="text-center mb-3">
+                    <?php if ($onlineStatus === 'online'): ?>
+                        <span class="badge bg-success fs-6 px-4 py-2">
+                            <i class="bi bi-circle-fill me-2" style="font-size: 0.7rem; animation: blink 1s infinite;"></i>ONLINE
+                        </span>
+                    <?php elseif ($onlineStatus === 'offline'): ?>
+                        <span class="badge bg-danger fs-6 px-4 py-2">
+                            <i class="bi bi-circle-fill me-2" style="font-size: 0.7rem;"></i>OFFLINE
+                        </span>
+                    <?php else: ?>
+                        <span class="badge bg-secondary fs-6 px-4 py-2">
+                            <i class="bi bi-question-circle me-2"></i>DESCONHECIDO
+                        </span>
+                    <?php endif; ?>
+                </div>
+                
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <th class="ps-0 border-0">Último contato</th>
+                        <td class="text-end border-0">
+                            <?php if ($lastSeen): ?>
+                                <?= date('d/m/Y H:i:s', strtotime($lastSeen)) ?>
+                            <?php else: ?>
+                                <span class="text-muted">Nunca</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="ps-0">Telemetria</th>
+                        <td class="text-end">
+                            <?php if ($telemetryEnabled): ?>
+                                <span class="badge bg-success">Habilitada</span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary">Desabilitada</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php if ($telemetryEnabled): ?>
+                    <tr>
+                        <th class="ps-0">Intervalo</th>
+                        <td class="text-end"><?= $telemetryInterval ?> min</td>
+                    </tr>
+                    <tr>
+                        <th class="ps-0">Offline após</th>
+                        <td class="text-end"><?= $telemetryThreshold ?> falhas</td>
+                    </tr>
+                    <?php endif; ?>
+                </table>
+                
+                <?php 
+                // Mostra métricas de telemetria se disponíveis
+                $telemetryData = $host['telemetry_data'] ?? null;
+                if ($telemetryData): 
+                    $metrics = json_decode($telemetryData, true);
+                ?>
+                <hr>
+                <h6 class="text-muted small mb-2">Métricas:</h6>
+                <div class="row g-2">
+                    <?php if (isset($metrics['cpu_percent'])): ?>
+                    <div class="col-4">
+                        <div class="text-center p-2 bg-light rounded">
+                            <div class="small text-muted">CPU</div>
+                            <strong><?= number_format($metrics['cpu_percent'], 1) ?>%</strong>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (isset($metrics['memory_percent'])): ?>
+                    <div class="col-4">
+                        <div class="text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Memória</div>
+                            <strong><?= number_format($metrics['memory_percent'], 1) ?>%</strong>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (isset($metrics['disk_percent'])): ?>
+                    <div class="col-4">
+                        <div class="text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Disco</div>
+                            <strong><?= number_format($metrics['disk_percent'], 1) ?>%</strong>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        
         <?php if (in_array($user['role'] ?? '', ['admin'])): ?>
         <div class="card mt-3">
             <div class="card-header bg-danger text-white">

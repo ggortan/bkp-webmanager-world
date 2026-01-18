@@ -1,0 +1,33 @@
+{
+  "api_url": "https://backup.seudominio.com",
+  "api_token": "COLE_AQUI_A_API_KEY_DO_CLIENTE",
+  "host_name": "SRV-EXEMPLO-01",
+  
+  "telemetry": {
+    "enabled": true,
+    "interval_minutes": 5
+  },
+  
+  "backup": {
+    "check_interval_minutes": 15,
+    "collectors": ["wsb", "veeam"]
+  },
+  
+  "routines": [
+    {
+      "routine_key": "rtk_COLE_AQUI_A_ROUTINE_KEY",
+      "source": "wsb",
+      "job_name": ""
+    },
+    {
+      "routine_key": "rtk_OUTRA_ROUTINE_KEY",
+      "source": "veeam",
+      "job_name": "Backup-VM-Producao"
+    }
+  ],
+  
+  "logging": {
+    "level": "INFO",
+    "retention_days": 30
+  }
+}

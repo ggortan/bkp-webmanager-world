@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Testa a conectividade e funcionalidade da API de backup,
-    incluindo autenticação e envio de dados de teste.
+    incluindo autenticação, envio de dados de backup e telemetria.
 
 .PARAMETER ApiUrl
     URL base da API (ex: https://backup.seudominio.com/api)
@@ -15,11 +15,17 @@
 .PARAMETER RoutineKey
     Chave da rotina de backup para teste
 
+.PARAMETER HostName
+    Nome do host para teste de telemetria (padrão: $env:COMPUTERNAME)
+
 .PARAMETER TestType
-    Tipo de teste: 'connectivity', 'auth', 'send', 'full'
+    Tipo de teste: 'connectivity', 'auth', 'send', 'telemetry', 'full'
 
 .EXAMPLE
     .\Test-BackupApi.ps1 -ApiUrl "https://backup.exemplo.com/api" -ApiKey "sua-key" -TestType connectivity
+
+.EXAMPLE
+    .\Test-BackupApi.ps1 -ApiUrl "https://backup.exemplo.com/api" -ApiKey "sua-key" -TestType telemetry
 
 .EXAMPLE
     .\Test-BackupApi.ps1 -ApiUrl "https://backup.exemplo.com/api" -ApiKey "sua-key" -RoutineKey "rtk_123" -TestType full
@@ -36,7 +42,10 @@ param(
     [string]$RoutineKey,
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet('connectivity', 'auth', 'send', 'full')]
+    [string]$HostName = $env:COMPUTERNAME,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('connectivity', 'auth', 'send', 'telemetry', 'full')]
     [string]$TestType = 'full'
 )
 
@@ -68,6 +77,7 @@ $results = @{
     Connectivity = $null
     Authentication = $null
     SendBackup = $null
+    Telemetry = $null
 }
 
 # ============================================
@@ -328,6 +338,214 @@ function Test-SendBackup {
 }
 
 # ============================================
+# TESTE 4: Telemetria
+# ============================================
+function Test-Telemetry {
+    Write-Host ""
+    Write-Host "--- Teste de Telemetria ---" -ForegroundColor Yellow
+    
+    # Headers - suporta ambos os métodos de autenticação
+    $headers = @{
+        "Content-Type" = "application/json"
+        "Accept" = "application/json"
+        "Authorization" = "Bearer $ApiKey"
+        "X-API-Key" = $ApiKey
+    }
+    
+    # Coleta métricas do sistema
+    Write-Info "Coletando metricas do sistema..."
+    
+    $metrics = @{}
+    
+    try {
+        $cpu = Get-CimInstance -ClassName Win32_Processor | Measure-Object -Property LoadPercentage -Average
+        $metrics['cpu_percent'] = [math]::Round($cpu.Average, 2)
+    }
+    catch {
+        $metrics['cpu_percent'] = 0
+    }
+    
+    try {
+        $os = Get-CimInstance -ClassName Win32_OperatingSystem
+        $memoryUsed = $os.TotalVisibleMemorySize - $os.FreePhysicalMemory
+        $metrics['memory_percent'] = [math]::Round(($memoryUsed / $os.TotalVisibleMemorySize) * 100, 2)
+    }
+    catch {
+        $metrics['memory_percent'] = 0
+    }
+    
+    try {
+        $sysDrive = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DeviceID='$($env:SystemDrive)'"
+        if ($sysDrive) {
+            $diskUsed = $sysDrive.Size - $sysDrive.FreeSpace
+            $metrics['disk_percent'] = [math]::Round(($diskUsed / $sysDrive.Size) * 100, 2)
+        }
+    }
+    catch {
+        $metrics['disk_percent'] = 0
+    }
+    
+    try {
+        $uptime = (Get-Date) - (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime
+        $metrics['uptime_seconds'] = [math]::Round($uptime.TotalSeconds, 0)
+    }
+    catch {
+        $metrics['uptime_seconds'] = 0
+    }
+    
+    # Obtém IP
+    $ipAddress = $null
+    try {
+        $ipAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne "127.0.0.1" -and $_.IPAddress -notlike "169.*" } | Select-Object -First 1).IPAddress
+    }
+    catch {
+        try {
+            $ipAddress = ([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object { $_.AddressFamily -eq 'InterNetwork' } | Select-Object -First 1).IPAddressToString
+        }
+        catch { }
+    }
+    
+    # Obtém OS
+    $osInfo = $null
+    try {
+        $osInfo = (Get-CimInstance Win32_OperatingSystem).Caption
+    }
+    catch { }
+    
+    # Dados de telemetria
+    $telemetryData = @{
+        host_name = $HostName
+        hostname = [System.Net.Dns]::GetHostName()
+        ip = $ipAddress
+        os = $osInfo
+        metrics = $metrics
+    }
+    
+    $jsonBody = $telemetryData | ConvertTo-Json -Depth 5
+    
+    Write-Info "Host Name: $HostName"
+    Write-Host ""
+    Write-Host "Payload:" -ForegroundColor Gray
+    Write-Host $jsonBody -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Info "Enviando telemetria..."
+    
+    try {
+        $response = Invoke-RestMethod -Uri "$ApiUrl/telemetry" -Method Post -Headers $headers -Body $jsonBody -TimeoutSec 30 -ErrorAction Stop
+        
+        if ($response.success) {
+            Write-Success "Telemetria enviada com sucesso!"
+            Write-Info "Host ID: $($response.host_id)"
+            Write-Info "Status: $($response.status)"
+            return $true
+        }
+        else {
+            Write-Fail "Resposta inesperada da API"
+            Write-Warn "Resposta: $($response | ConvertTo-Json -Compress)"
+            return $false
+        }
+    }
+    catch {
+        $statusCode = 0
+        $errorBody = ""
+        
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+            
+            try {
+                $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                $errorBody = $reader.ReadToEnd()
+                $reader.Close()
+            }
+            catch {}
+        }
+        
+        switch ($statusCode) {
+            401 {
+                Write-Fail "API Key invalida (401 Unauthorized)"
+            }
+            422 {
+                Write-Fail "Erro de validacao (422)"
+                if ($errorBody) { Write-Warn "Detalhes: $errorBody" }
+            }
+            500 {
+                Write-Fail "Erro interno do servidor (500)"
+                if ($errorBody) { Write-Warn "Detalhes: $errorBody" }
+            }
+            default {
+                Write-Fail "Erro HTTP $statusCode`: $($_.Exception.Message)"
+                if ($errorBody) { Write-Warn "Detalhes: $errorBody" }
+            }
+        }
+        return $false
+    }
+}
+
+# ============================================
+# TESTE 5: Lista de Hosts
+# ============================================
+function Test-ListHosts {
+    Write-Host ""
+    Write-Host "--- Teste de Lista de Hosts ---" -ForegroundColor Yellow
+    
+    $headers = @{
+        "Content-Type" = "application/json"
+        "Accept" = "application/json"
+        "Authorization" = "Bearer $ApiKey"
+        "X-API-Key" = $ApiKey
+    }
+    
+    try {
+        Write-Info "Obtendo lista de hosts..."
+        
+        $response = Invoke-RestMethod -Uri "$ApiUrl/hosts" -Method Get -Headers $headers -TimeoutSec 15 -ErrorAction Stop
+        
+        if ($response.success) {
+            Write-Success "Lista de hosts obtida com sucesso!"
+            Write-Info "Total de hosts: $($response.total)"
+            
+            if ($response.hosts -and $response.hosts.Count -gt 0) {
+                Write-Host ""
+                Write-Host "Hosts:" -ForegroundColor White
+                foreach ($host in $response.hosts) {
+                    $statusIcon = switch ($host.online_status) {
+                        'online' { "[ONLINE]" }
+                        'offline' { "[OFFLINE]" }
+                        default { "[?]" }
+                    }
+                    $statusColor = switch ($host.online_status) {
+                        'online' { "Green" }
+                        'offline' { "Red" }
+                        default { "Gray" }
+                    }
+                    Write-Host "  " -NoNewline
+                    Write-Host $statusIcon -ForegroundColor $statusColor -NoNewline
+                    Write-Host " $($host.nome) - $($host.ip)" -ForegroundColor White
+                }
+            }
+            return $true
+        }
+        else {
+            Write-Warn "Resposta inesperada"
+            return $false
+        }
+    }
+    catch {
+        $statusCode = 0
+        if ($_.Exception.Response) {
+            $statusCode = [int]$_.Exception.Response.StatusCode
+        }
+        
+        switch ($statusCode) {
+            401 { Write-Fail "API Key invalida (401 Unauthorized)" }
+            403 { Write-Fail "Acesso negado (403 Forbidden)" }
+            default { Write-Fail "Erro: $($_.Exception.Message)" }
+        }
+        return $false
+    }
+}
+
+# ============================================
 # Execução dos Testes
 # ============================================
 
@@ -346,12 +564,24 @@ switch ($TestType) {
     'send' {
         $results.SendBackup = Test-SendBackup
     }
+    'telemetry' {
+        $results.Connectivity = Test-Connectivity
+        if ($results.Connectivity) {
+            $results.Authentication = Test-Authentication
+            if ($results.Authentication) {
+                $results.Telemetry = Test-Telemetry
+                Test-ListHosts | Out-Null
+            }
+        }
+    }
     'full' {
         $results.Connectivity = Test-Connectivity
         if ($results.Connectivity) {
             $results.Authentication = Test-Authentication
             if ($results.Authentication) {
                 $results.SendBackup = Test-SendBackup
+                $results.Telemetry = Test-Telemetry
+                Test-ListHosts | Out-Null
             }
         }
     }
@@ -381,6 +611,11 @@ if ($null -ne $results.SendBackup) {
 }
 elseif ($TestType -eq 'full' -and -not $RoutineKey) {
     Write-Warn "Envio de Backup: PULADO (sem RoutineKey)"
+}
+
+if ($null -ne $results.Telemetry) {
+    if ($results.Telemetry) { Write-Success "Telemetria: OK" }
+    else { Write-Fail "Telemetria: FALHOU"; $exitCode = 1 }
 }
 
 Write-Host ""

@@ -19,10 +19,17 @@ Router::group(['prefix' => '/api', 'middleware' => ['api_auth']], function () {
     // Backup
     Router::post('/backup', [ApiBackupController::class, 'store']);
     
+    // Telemetria (heartbeat/ping)
+    Router::post('/telemetry', [ApiBackupController::class, 'telemetry']);
+    Router::post('/heartbeat', [ApiBackupController::class, 'telemetry']); // Alias
+    
     // Info do cliente
     Router::get('/me', [ApiBackupController::class, 'me']);
     
     // Rotinas do cliente
     Router::get('/rotinas', [ApiBackupController::class, 'rotinas']);
+    
+    // Hosts do cliente
+    Router::get('/hosts', [ApiBackupController::class, 'hosts']);
     
 });

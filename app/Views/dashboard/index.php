@@ -35,6 +35,51 @@
     </div>
 </div>
 
+<!-- Hosts Status Summary -->
+<?php if (!empty($host_status)): ?>
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-hdd-network me-2"></i>Status dos Hosts
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h3 class="mb-0"><?= $host_status['total'] ?? 0 ?></h3>
+                            <small class="text-muted">Total de Hosts</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h3 class="mb-0 text-success">
+                                <i class="bi bi-circle-fill me-1" style="font-size: 0.8rem;"></i><?= $host_status['online'] ?? 0 ?>
+                            </h3>
+                            <small class="text-muted">Online</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h3 class="mb-0 text-danger">
+                                <i class="bi bi-circle-fill me-1" style="font-size: 0.8rem;"></i><?= $host_status['offline'] ?? 0 ?>
+                            </h3>
+                            <small class="text-muted">Offline</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="mb-0 text-secondary">
+                            <i class="bi bi-question-circle me-1" style="font-size: 0.8rem;"></i><?= $host_status['unknown'] ?? 0 ?>
+                        </h3>
+                        <small class="text-muted">Sem telemetria</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="row g-4">
     <!-- Gráfico de Backups -->
     <div class="col-xl-8">

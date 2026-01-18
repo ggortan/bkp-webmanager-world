@@ -186,4 +186,176 @@ class ApiBackupController extends Controller
             'total' => count($result)
         ]);
     }
+
+    /**
+     * Recebe telemetria (heartbeat) do host
+     * POST /api/telemetry ou POST /api/heartbeat
+     */
+    public function telemetry(): void
+    {
+        $cliente = $_REQUEST['_cliente'] ?? null;
+        
+        if (!$cliente) {
+            $this->json([
+                'success' => false,
+                'error' => 'Cliente não identificado',
+                'status' => 401
+            ], 401);
+            return;
+        }
+        
+        // Obtém dados do body
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->json([
+                'success' => false,
+                'error' => 'JSON inválido',
+                'status' => 400
+            ], 400);
+            return;
+        }
+        
+        // Valida campos obrigatórios
+        if (empty($data['host_name'])) {
+            $this->json([
+                'success' => false,
+                'error' => "O campo 'host_name' é obrigatório",
+                'status' => 422
+            ], 422);
+            return;
+        }
+        
+        try {
+            $hostNome = $data['host_name'];
+            
+            // Busca ou cria o host
+            $host = \App\Models\Host::findByNomeAndCliente($hostNome, $cliente['id']);
+            
+            if (!$host) {
+                // Cria host automaticamente
+                $newHostData = [
+                    'cliente_id' => $cliente['id'],
+                    'nome' => $hostNome,
+                    'hostname' => $data['hostname'] ?? $hostNome,
+                    'ip' => $data['ip'] ?? null,
+                    'sistema_operacional' => $data['os'] ?? $data['sistema_operacional'] ?? null,
+                    'tipo' => $data['tipo'] ?? 'server',
+                    'ativo' => 1,
+                    'online_status' => 'online',
+                    'last_seen_at' => date('Y-m-d H:i:s'),
+                    'telemetry_enabled' => 1,
+                    'observacoes' => 'Criado automaticamente via telemetria'
+                ];
+                
+                // Adiciona dados de telemetria se fornecidos
+                if (!empty($data['metrics'])) {
+                    $newHostData['telemetry_data'] = json_encode($data['metrics']);
+                }
+                
+                $hostId = \App\Models\Host::create($newHostData);
+                $host = \App\Models\Host::find($hostId);
+                
+                LogService::api('Host criado via telemetria', [
+                    'cliente_id' => $cliente['id'],
+                    'host_id' => $hostId,
+                    'host_nome' => $hostNome
+                ]);
+            } else {
+                // Atualiza host existente
+                $updateData = [
+                    'last_seen_at' => date('Y-m-d H:i:s'),
+                    'online_status' => 'online'
+                ];
+                
+                // Atualiza IP se mudou
+                if (!empty($data['ip']) && $data['ip'] !== $host['ip']) {
+                    $updateData['ip'] = $data['ip'];
+                }
+                
+                // Atualiza hostname se mudou
+                if (!empty($data['hostname']) && $data['hostname'] !== $host['hostname']) {
+                    $updateData['hostname'] = $data['hostname'];
+                }
+                
+                // Atualiza SO se fornecido
+                if (!empty($data['os']) || !empty($data['sistema_operacional'])) {
+                    $so = $data['os'] ?? $data['sistema_operacional'];
+                    if ($so !== $host['sistema_operacional']) {
+                        $updateData['sistema_operacional'] = $so;
+                    }
+                }
+                
+                // Atualiza métricas de telemetria
+                if (!empty($data['metrics'])) {
+                    $updateData['telemetry_data'] = json_encode($data['metrics']);
+                }
+                
+                \App\Models\Host::update($host['id'], $updateData);
+            }
+            
+            $this->json([
+                'success' => true,
+                'message' => 'Telemetria recebida',
+                'host_id' => $host['id'],
+                'host_name' => $host['nome'],
+                'status' => 'online'
+            ]);
+            
+        } catch (\Exception $e) {
+            LogService::error('api', 'Erro ao processar telemetria', [
+                'cliente_id' => $cliente['id'],
+                'error' => $e->getMessage(),
+                'data' => $data
+            ]);
+            
+            $this->json([
+                'success' => false,
+                'error' => 'Erro ao processar telemetria',
+                'status' => 500
+            ], 500);
+        }
+    }
+
+    /**
+     * Retorna hosts do cliente autenticado
+     * GET /api/hosts
+     */
+    public function hosts(): void
+    {
+        $cliente = $_REQUEST['_cliente'] ?? null;
+        
+        if (!$cliente) {
+            $this->json([
+                'success' => false,
+                'error' => 'Cliente não identificado',
+                'status' => 401
+            ], 401);
+            return;
+        }
+        
+        $hosts = \App\Models\Host::ativosByCliente($cliente['id']);
+        
+        // Formata hosts para a resposta
+        $result = array_map(function($host) {
+            return [
+                'id' => $host['id'],
+                'nome' => $host['nome'],
+                'hostname' => $host['hostname'],
+                'ip' => $host['ip'],
+                'sistema_operacional' => $host['sistema_operacional'],
+                'tipo' => $host['tipo'],
+                'online_status' => $host['online_status'] ?? 'unknown',
+                'last_seen_at' => $host['last_seen_at'],
+                'telemetry_enabled' => (bool) ($host['telemetry_enabled'] ?? true)
+            ];
+        }, $hosts);
+        
+        $this->json([
+            'success' => true,
+            'hosts' => $result,
+            'total' => count($result)
+        ]);
+    }
 }

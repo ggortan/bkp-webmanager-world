@@ -27,6 +27,9 @@ class DashboardController extends Controller
     {
         $dashboardData = $this->backupService->getDashboardData();
         
+        // Adiciona resumo de status dos hosts
+        $hostStatusSummary = \App\Models\Host::statusSummary();
+        
         $this->data['title'] = 'Dashboard';
         $this->data['stats'] = $dashboardData['stats'];
         $this->data['stats_periodo'] = $dashboardData['stats_periodo'];
@@ -34,6 +37,7 @@ class DashboardController extends Controller
         $this->data['execucoes_recentes'] = $dashboardData['execucoes_recentes'];
         $this->data['total_clientes'] = $dashboardData['total_clientes'];
         $this->data['total_servidores'] = $dashboardData['total_servidores'];
+        $this->data['host_status'] = $hostStatusSummary;
         
         $this->render('dashboard/index', $this->data);
     }

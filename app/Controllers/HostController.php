@@ -122,7 +122,11 @@ class HostController extends Controller
             'sistema_operacional' => Security::sanitize($data['sistema_operacional'] ?? ''),
             'tipo' => Security::sanitize($data['tipo'] ?? ''),
             'observacoes' => Security::sanitize($data['observacoes'] ?? ''),
-            'ativo' => isset($data['ativo']) ? 1 : 0
+            'ativo' => isset($data['ativo']) ? 1 : 0,
+            'telemetry_enabled' => isset($data['telemetry_enabled']) ? 1 : 0,
+            'telemetry_interval_minutes' => (int) ($data['telemetry_interval_minutes'] ?? 5),
+            'telemetry_offline_threshold' => (int) ($data['telemetry_offline_threshold'] ?? 3),
+            'online_status' => 'unknown'
         ];
         
         $hostId = Host::create($hostData);
@@ -267,7 +271,10 @@ class HostController extends Controller
             'sistema_operacional' => Security::sanitize($data['sistema_operacional'] ?? ''),
             'tipo' => Security::sanitize($data['tipo'] ?? ''),
             'observacoes' => Security::sanitize($data['observacoes'] ?? ''),
-            'ativo' => isset($data['ativo']) ? 1 : 0
+            'ativo' => isset($data['ativo']) ? 1 : 0,
+            'telemetry_enabled' => isset($data['telemetry_enabled']) ? 1 : 0,
+            'telemetry_interval_minutes' => (int) ($data['telemetry_interval_minutes'] ?? 5),
+            'telemetry_offline_threshold' => (int) ($data['telemetry_offline_threshold'] ?? 3)
         ];
         
         Host::update($id, $hostData);

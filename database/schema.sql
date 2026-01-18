@@ -91,6 +91,13 @@ CREATE TABLE IF NOT EXISTS hosts (
     ativo TINYINT(1) NOT NULL DEFAULT 1,
     observacoes TEXT NULL,
     descricao TEXT NULL COMMENT 'Descrição detalhada do host',
+    -- Campos de telemetria
+    telemetry_enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'Se telemetria está habilitada para este host',
+    telemetry_interval_minutes INT UNSIGNED NOT NULL DEFAULT 5 COMMENT 'Intervalo esperado de telemetria em minutos',
+    telemetry_offline_threshold INT UNSIGNED NOT NULL DEFAULT 3 COMMENT 'Quantidade de pings perdidos para considerar offline',
+    last_seen_at TIMESTAMP NULL COMMENT 'Última vez que o host enviou telemetria',
+    online_status ENUM('online', 'offline', 'unknown') NOT NULL DEFAULT 'unknown' COMMENT 'Status atual do host',
+    telemetry_data JSON NULL COMMENT 'Dados da última telemetria (CPU, RAM, disco, etc)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
@@ -98,7 +105,9 @@ CREATE TABLE IF NOT EXISTS hosts (
     UNIQUE KEY uk_cliente_host (cliente_id, nome),
     INDEX idx_cliente (cliente_id),
     INDEX idx_nome (nome),
-    INDEX idx_ativo (ativo)
+    INDEX idx_ativo (ativo),
+    INDEX idx_online_status (online_status),
+    INDEX idx_last_seen (last_seen_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
