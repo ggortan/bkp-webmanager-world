@@ -164,7 +164,7 @@ class RelatorioController extends Controller
         fputcsv($output, [
             'ID',
             'Cliente',
-            'Servidor',
+            'Host',
             'Rotina',
             'Status',
             'Data Início',
@@ -179,7 +179,7 @@ class RelatorioController extends Controller
             fputcsv($output, [
                 $exec['id'],
                 $exec['cliente_nome'] ?? '',
-                $exec['servidor_nome'] ?? '',
+                $exec['host_nome'] ?? '',
                 $exec['rotina_nome'] ?? '',
                 $exec['status'],
                 $exec['data_inicio'],

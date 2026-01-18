@@ -7,7 +7,7 @@ namespace App\Controllers;
 
 use App\Models\Cliente;
 use App\Models\RotinaBackup;
-use App\Models\Servidor;
+use App\Models\Host;
 use App\Services\AuthService;
 use App\Services\LogService;
 use App\Helpers\Security;
@@ -61,12 +61,12 @@ class RotinaBackupController extends Controller
             return;
         }
         
-        // Busca servidores do cliente para opção de vinculação
-        $servidores = Servidor::byCliente($clienteId);
+        // Busca hostes do cliente para opção de vinculação
+        $hostes = Host::byCliente($clienteId);
         
         $this->data['title'] = 'Nova Rotina de Backup';
         $this->data['cliente'] = $cliente;
-        $this->data['servidores'] = $servidores;
+        $this->data['hostes'] = $hostes;
         $this->data['rotina'] = null;
         $this->data['errors'] = [];
         
@@ -98,10 +98,10 @@ class RotinaBackupController extends Controller
         }
         
         if (!empty($errors)) {
-            $servidores = Servidor::byCliente($clienteId);
+            $hostes = Host::byCliente($clienteId);
             $this->data['title'] = 'Nova Rotina de Backup';
             $this->data['cliente'] = $cliente;
-            $this->data['servidores'] = $servidores;
+            $this->data['hostes'] = $hostes;
             $this->data['rotina'] = $data;
             $this->data['errors'] = $errors;
             $this->render('rotinas/form', $this->data);
@@ -123,7 +123,7 @@ class RotinaBackupController extends Controller
         
         $rotinaData = [
             'cliente_id' => $clienteId,
-            'servidor_id' => !empty($data['servidor_id']) ? (int)$data['servidor_id'] : null,
+            'host_id' => !empty($data['host_id']) ? (int)$data['host_id'] : null,
             'nome' => Security::sanitize($data['nome']),
             'routine_key' => RotinaBackup::generateRoutineKey(),
             'tipo' => Security::sanitize($data['tipo'] ?? ''),
@@ -163,16 +163,16 @@ class RotinaBackupController extends Controller
         // Busca últimas execuções usando o model
         $execucoes = RotinaBackup::getRecentExecutions($id, self::DEFAULT_EXECUTION_LIMIT);
         
-        // Busca servidor se vinculado
-        $servidor = null;
-        if ($rotina['servidor_id']) {
-            $servidor = Servidor::find($rotina['servidor_id']);
+        // Busca host se vinculado
+        $host = null;
+        if ($rotina['host_id']) {
+            $host = Host::find($rotina['host_id']);
         }
         
         $this->data['title'] = 'Rotina: ' . $rotina['nome'];
         $this->data['cliente'] = $cliente;
         $this->data['rotina'] = $rotina;
-        $this->data['servidor'] = $servidor;
+        $this->data['host'] = $host;
         $this->data['execucoes'] = $execucoes;
         $this->data['flash'] = $this->getFlash();
         
@@ -193,12 +193,12 @@ class RotinaBackupController extends Controller
             return;
         }
         
-        // Busca servidores do cliente
-        $servidores = Servidor::byCliente($clienteId);
+        // Busca hostes do cliente
+        $hostes = Host::byCliente($clienteId);
         
         $this->data['title'] = 'Editar Rotina';
         $this->data['cliente'] = $cliente;
-        $this->data['servidores'] = $servidores;
+        $this->data['hostes'] = $hostes;
         $this->data['rotina'] = $rotina;
         $this->data['errors'] = [];
         
@@ -234,10 +234,10 @@ class RotinaBackupController extends Controller
         }
         
         if (!empty($errors)) {
-            $servidores = Servidor::byCliente($clienteId);
+            $hostes = Host::byCliente($clienteId);
             $this->data['title'] = 'Editar Rotina';
             $this->data['cliente'] = $cliente;
-            $this->data['servidores'] = $servidores;
+            $this->data['hostes'] = $hostes;
             $this->data['rotina'] = array_merge($rotina, $data);
             $this->data['errors'] = $errors;
             $this->render('rotinas/form', $this->data);
@@ -258,7 +258,7 @@ class RotinaBackupController extends Controller
         }
         
         $rotinaData = [
-            'servidor_id' => !empty($data['servidor_id']) ? (int)$data['servidor_id'] : null,
+            'host_id' => !empty($data['host_id']) ? (int)$data['host_id'] : null,
             'nome' => Security::sanitize($data['nome']),
             'tipo' => Security::sanitize($data['tipo'] ?? ''),
             'agendamento' => Security::sanitize($data['agendamento'] ?? ''),

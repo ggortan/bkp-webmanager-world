@@ -8,7 +8,7 @@
 namespace App\Services;
 
 use App\Models\Cliente;
-use App\Models\Servidor;
+use App\Models\Host;
 use App\Models\RotinaBackup;
 use App\Models\ExecucaoBackup;
 use App\Database;
@@ -27,7 +27,7 @@ class BackupService
         
         try {
             $rotina = null;
-            $servidor = null;
+            $host = null;
             
             // Novo formato: usando routine_key
             if (!empty($data['routine_key'])) {
@@ -49,22 +49,22 @@ class BackupService
                     $rotina['host_info'] = $hostInfo;
                 }
                 
-                // Se a rotina tem servidor vinculado, usa ele
-                if ($rotina['servidor_id']) {
-                    $servidor = Servidor::find($rotina['servidor_id']);
+                // Se a rotina tem host vinculado, usa ele
+                if ($rotina['host_id']) {
+                    $host = Host::find($rotina['host_id']);
                 }
             }
             // Formato antigo (compatibilidade): usando servidor + rotina
             elseif (!empty($data['servidor']) && !empty($data['rotina'])) {
-                // Encontra ou cria o servidor
-                $servidor = Servidor::findOrCreate($cliente['id'], $data['servidor'], [
+                // Encontra ou cria o host
+                $host = Host::findOrCreate($cliente['id'], $data['servidor'], [
                     'hostname' => $data['hostname'] ?? null,
                     'ip' => $data['ip'] ?? null,
                     'sistema_operacional' => $data['sistema_operacional'] ?? null
                 ]);
                 
                 // Encontra ou cria a rotina (compatibilidade)
-                $rotina = RotinaBackup::findOrCreate($servidor['id'], $data['rotina'], [
+                $rotina = RotinaBackup::findOrCreate($host['id'], $data['rotina'], [
                     'tipo' => $data['tipo_backup'] ?? null,
                     'destino' => $data['destino'] ?? null
                 ]);
@@ -90,7 +90,7 @@ class BackupService
             $execucaoData = [
                 'rotina_id' => $rotina['id'],
                 'cliente_id' => $cliente['id'],
-                'servidor_id' => $servidor ? $servidor['id'] : null,
+                'servidor_id' => $host ? $host['id'] : null,
                 'data_inicio' => $data['data_inicio'],
                 'data_fim' => $data['data_fim'] ?? null,
                 'status' => $data['status'],
@@ -111,7 +111,7 @@ class BackupService
                 'rotina_id' => $rotina['id'],
                 'rotina_nome' => $rotina['nome'],
                 'routine_key' => $rotina['routine_key'] ?? null,
-                'servidor' => $servidor ? $servidor['nome'] : ($data['servidor'] ?? 'N/A'),
+                'host' => $host ? $host['nome'] : ($data['servidor'] ?? 'N/A'),
                 'status' => $data['status'],
                 'execucao_id' => $execucaoId
             ]);
@@ -161,10 +161,10 @@ class BackupService
         
         // Verifica se é novo formato (routine_key) ou formato antigo (servidor + rotina)
         $isNewFormat = !empty($data['routine_key']);
-        $isOldFormat = !empty($data['servidor']) && !empty($data['rotina']);
+        $isOldFormat = !empty($data['host']) && !empty($data['rotina']);
         
         if (!$isNewFormat && !$isOldFormat) {
-            $errors['format'] = "Informe 'routine_key' (novo formato) ou 'servidor' + 'rotina' (formato antigo)";
+            $errors['format'] = "Informe 'routine_key' (novo formato) ou 'host' + 'rotina' (formato antigo)";
         }
         
         // Valida routine_key se fornecido

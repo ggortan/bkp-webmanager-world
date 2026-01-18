@@ -80,10 +80,10 @@ class Cliente extends Model
             return null;
         }
         
-        // Conta servidores
-        $sql = "SELECT COUNT(*) as total FROM servidores WHERE cliente_id = ?";
-        $servidores = \App\Database::fetch($sql, [$id]);
-        $cliente['total_servidores'] = $servidores['total'];
+        // Conta hosts
+        $sql = "SELECT COUNT(*) as total FROM hosts WHERE cliente_id = ?";
+        $hosts = \App\Database::fetch($sql, [$id]);
+        $cliente['total_hosts'] = $hosts['total'];
         
         // Conta backups nos últimos 30 dias
         $sql = "SELECT 
