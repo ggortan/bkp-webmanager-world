@@ -266,7 +266,7 @@ function Get-VeeamReplicationJobs {
 function ConvertTo-StandardVeeamFormat {
     <#
     .SYNOPSIS
-        Converte dados do Veeam para o formato padrão da API
+        Converte dados do Veeam para o formato padrão da API (baseado em routine_key)
     #>
     [CmdletBinding()]
     param(
@@ -274,7 +274,10 @@ function ConvertTo-StandardVeeamFormat {
         [hashtable]$Job,
         
         [Parameter(Mandatory = $true)]
-        [string]$ServerName
+        [string]$ServerName,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$RoutineKey = $null
     )
     
     $hostname = [System.Net.Dns]::GetHostName()
@@ -283,19 +286,23 @@ function ConvertTo-StandardVeeamFormat {
     
     $tipoBackup = if ($Job.Details.IsFullBackup) { "Completo" } else { "Incremental" }
     
+    # Formato padrão da API (usando routine_key)
     $standardFormat = @{
-        servidor = $ServerName
-        hostname = $hostname
-        ip = $ipAddress
-        sistema_operacional = $os
-        rotina = $Job.JobName
-        tipo_backup = $tipoBackup
-        data_inicio = $Job.StartTime
-        data_fim = $Job.EndTime
+        routine_key = $RoutineKey
+        rotina_nome = $Job.JobName
+        data_inicio = if ($Job.StartTime) { $Job.StartTime.ToString("yyyy-MM-dd HH:mm:ss") } else { (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") }
+        data_fim = if ($Job.EndTime) { $Job.EndTime.ToString("yyyy-MM-dd HH:mm:ss") } else { $null }
         status = $Job.Status
         tamanho_bytes = $Job.ProcessedSize
+        host_info = @{
+            nome = $ServerName
+            hostname = $hostname
+            ip = $ipAddress
+            sistema_operacional = $os
+        }
         detalhes = @{
             source = $Job.Source
+            tipo_backup = $tipoBackup
             job_id = $Job.JobId
             job_type = $Job.JobType
             backup_size_bytes = $Job.BackupSize

@@ -238,7 +238,7 @@ function Get-TaskSchedulerBackups {
 function ConvertTo-StandardBackupFormat {
     <#
     .SYNOPSIS
-        Converte dados coletados para o formato padrão da API
+        Converte dados coletados para o formato padrão da API (baseado em routine_key)
     #>
     [CmdletBinding()]
     param(
@@ -249,6 +249,9 @@ function ConvertTo-StandardBackupFormat {
         [string]$ServerName,
         
         [Parameter(Mandatory = $false)]
+        [string]$RoutineKey = $null,
+        
+        [Parameter(Mandatory = $false)]
         [string]$DefaultRotina = "Windows Server Backup"
     )
     
@@ -256,28 +259,32 @@ function ConvertTo-StandardBackupFormat {
     $ipAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" } | Select-Object -First 1).IPAddress
     $os = (Get-CimInstance Win32_OperatingSystem).Caption
     
-    $rotina = if ($Job.TaskName) { $Job.TaskName } else { $DefaultRotina }
+    $rotinaNome = if ($Job.TaskName) { $Job.TaskName } else { $DefaultRotina }
     
+    # Formato padrão da API (usando routine_key)
     $standardFormat = @{
-        servidor = $ServerName
-        hostname = $hostname
-        ip = $ipAddress
-        sistema_operacional = $os
-        rotina = $rotina
-        tipo_backup = "Completo"
-        data_inicio = $Job.TimeCreated
+        routine_key = $RoutineKey
+        rotina_nome = $rotinaNome
+        data_inicio = if ($Job.TimeCreated) { $Job.TimeCreated.ToString("yyyy-MM-dd HH:mm:ss") } else { (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") }
         status = $Job.Status
+        host_info = @{
+            nome = $ServerName
+            hostname = $hostname
+            ip = $ipAddress
+            sistema_operacional = $os
+        }
         detalhes = @{
             source = $Job.Source
+            tipo_backup = "Completo"
         }
     }
     
     # Adiciona data de fim se disponível
     if ($Job.EndTime) {
-        $standardFormat.data_fim = $Job.EndTime
+        $standardFormat.data_fim = $Job.EndTime.ToString("yyyy-MM-dd HH:mm:ss")
     }
-    else {
-        $standardFormat.data_fim = $Job.TimeCreated
+    elseif ($Job.TimeCreated) {
+        $standardFormat.data_fim = $Job.TimeCreated.ToString("yyyy-MM-dd HH:mm:ss")
     }
     
     # Adiciona tamanho se disponível

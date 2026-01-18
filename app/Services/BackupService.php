@@ -75,7 +75,7 @@ class BackupService
             $execucaoData = [
                 'rotina_id' => $rotina['id'],
                 'cliente_id' => $cliente['id'],
-                'servidor_id' => $host ? $host['id'] : null,
+                'host_id' => $host ? $host['id'] : null,
                 'data_inicio' => $data['data_inicio'],
                 'data_fim' => $data['data_fim'] ?? null,
                 'status' => $data['status'],
@@ -131,8 +131,8 @@ class BackupService
             'stats_clientes' => ExecucaoBackup::getStatsByCliente(30),
             'execucoes_recentes' => ExecucaoBackup::getRecent(10),
             'total_clientes' => Cliente::count(['ativo' => 1]),
-            'total_servidores' => \App\Database::fetch(
-                "SELECT COUNT(*) as total FROM servidores WHERE ativo = 1"
+            'total_hosts' => \App\Database::fetch(
+                "SELECT COUNT(*) as total FROM hosts WHERE ativo = 1"
             )['total'] ?? 0
         ];
     }

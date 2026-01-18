@@ -1,6 +1,10 @@
 -- ============================================
 -- Backup WebManager - Database Schema
 -- World Informática
+-- Versão: 2.0.0
+-- ============================================
+-- Este é o script de criação inicial do banco de dados.
+-- Execute este script para criar um banco de dados novo.
 -- ============================================
 
 -- Criar banco de dados
@@ -74,22 +78,24 @@ CREATE TABLE IF NOT EXISTS clientes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- Tabela: servidores
+-- Tabela: hosts (anteriormente "servidores")
 -- ============================================
-CREATE TABLE IF NOT EXISTS servidores (
+CREATE TABLE IF NOT EXISTS hosts (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT UNSIGNED NOT NULL,
-    nome VARCHAR(100) NOT NULL COMMENT 'Nome do servidor',
+    nome VARCHAR(100) NOT NULL COMMENT 'Nome do host',
     hostname VARCHAR(255) NULL,
     ip VARCHAR(45) NULL,
     sistema_operacional VARCHAR(100) NULL,
+    tipo VARCHAR(50) NULL COMMENT 'Tipo do host: server, workstation, vm, container',
     ativo TINYINT(1) NOT NULL DEFAULT 1,
     observacoes TEXT NULL,
+    descricao TEXT NULL COMMENT 'Descrição detalhada do host',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE ON UPDATE CASCADE,
-    UNIQUE KEY uk_cliente_servidor (cliente_id, nome),
+    UNIQUE KEY uk_cliente_host (cliente_id, nome),
     INDEX idx_cliente (cliente_id),
     INDEX idx_nome (nome),
     INDEX idx_ativo (ativo)
@@ -100,7 +106,10 @@ CREATE TABLE IF NOT EXISTS servidores (
 -- ============================================
 CREATE TABLE IF NOT EXISTS rotinas_backup (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    servidor_id INT UNSIGNED NOT NULL,
+    cliente_id INT UNSIGNED NOT NULL COMMENT 'Cliente ao qual a rotina pertence',
+    routine_key VARCHAR(64) NOT NULL UNIQUE COMMENT 'Chave única para identificar a rotina na API',
+    host_id INT UNSIGNED NULL COMMENT 'Host (opcional, para organização)',
+    host_info JSON NULL COMMENT 'Informações do host (nome, hostname, IP, SO, etc)',
     nome VARCHAR(100) NOT NULL COMMENT 'Nome da rotina de backup',
     tipo VARCHAR(50) NULL COMMENT 'Tipo de backup (full, incremental, etc)',
     agendamento VARCHAR(100) NULL COMMENT 'Descrição do agendamento',
@@ -110,9 +119,12 @@ CREATE TABLE IF NOT EXISTS rotinas_backup (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (servidor_id) REFERENCES servidores(id) ON DELETE CASCADE ON UPDATE CASCADE,
-    UNIQUE KEY uk_servidor_rotina (servidor_id, nome),
-    INDEX idx_servidor (servidor_id),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE SET NULL ON UPDATE CASCADE,
+    UNIQUE KEY uk_cliente_rotina_nome (cliente_id, nome),
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_host (host_id),
+    INDEX idx_routine_key (routine_key),
     INDEX idx_nome (nome),
     INDEX idx_ativa (ativa)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -124,7 +136,7 @@ CREATE TABLE IF NOT EXISTS execucoes_backup (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     rotina_id INT UNSIGNED NOT NULL,
     cliente_id INT UNSIGNED NOT NULL COMMENT 'Redundância para consultas rápidas',
-    servidor_id INT UNSIGNED NOT NULL COMMENT 'Redundância para consultas rápidas',
+    host_id INT UNSIGNED NULL COMMENT 'Host (opcional, extraído do host_info da rotina)',
     data_inicio TIMESTAMP NOT NULL,
     data_fim TIMESTAMP NULL,
     status ENUM('sucesso', 'falha', 'alerta', 'executando') NOT NULL DEFAULT 'executando',
@@ -136,10 +148,10 @@ CREATE TABLE IF NOT EXISTS execucoes_backup (
     
     FOREIGN KEY (rotina_id) REFERENCES rotinas_backup(id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (servidor_id) REFERENCES servidores(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE SET NULL ON UPDATE CASCADE,
     INDEX idx_rotina (rotina_id),
     INDEX idx_cliente (cliente_id),
-    INDEX idx_servidor (servidor_id),
+    INDEX idx_host (host_id),
     INDEX idx_status (status),
     INDEX idx_data_inicio (data_inicio),
     INDEX idx_cliente_status (cliente_id, status),
@@ -227,7 +239,70 @@ CREATE TABLE IF NOT EXISTS configuracoes (
 
 -- Inserir configurações padrão
 INSERT INTO configuracoes (chave, valor, tipo, descricao) VALUES
+('schema_version', '2.0.0', 'string', 'Versão do schema do banco de dados'),
 ('relatorios_email_ativo', 'true', 'boolean', 'Ativar/desativar envio de relatórios por e-mail'),
 ('dias_retencao_logs', '90', 'integer', 'Quantidade de dias para manter logs no sistema'),
 ('alerta_backups_falhos', 'true', 'boolean', 'Alertar quando houver backups com falha'),
 ('timezone', 'America/Sao_Paulo', 'string', 'Fuso horário do sistema');
+
+-- ============================================
+-- Views para consultas facilitadas
+-- ============================================
+
+-- View de rotinas com informações completas
+CREATE OR REPLACE VIEW v_rotinas_completas AS
+SELECT 
+    r.id,
+    r.cliente_id,
+    r.host_id,
+    r.routine_key,
+    r.nome,
+    r.tipo,
+    r.agendamento,
+    r.destino,
+    r.ativa,
+    r.host_info,
+    r.observacoes,
+    r.created_at,
+    r.updated_at,
+    c.identificador AS cliente_identificador,
+    c.nome AS cliente_nome,
+    c.ativo AS cliente_ativo,
+    h.nome AS host_nome,
+    h.hostname AS host_hostname,
+    h.ip AS host_ip
+FROM rotinas_backup r
+INNER JOIN clientes c ON r.cliente_id = c.id
+LEFT JOIN hosts h ON r.host_id = h.id;
+
+-- View de execuções com informações completas
+CREATE OR REPLACE VIEW v_execucoes_completas AS
+SELECT 
+    e.id,
+    e.rotina_id,
+    e.cliente_id,
+    e.host_id,
+    e.data_inicio,
+    e.data_fim,
+    e.status,
+    e.tamanho_bytes,
+    e.destino,
+    e.mensagem_erro,
+    e.detalhes,
+    e.created_at,
+    r.nome AS rotina_nome,
+    r.routine_key,
+    r.tipo AS rotina_tipo,
+    r.host_info,
+    c.identificador AS cliente_identificador,
+    c.nome AS cliente_nome,
+    h.nome AS host_nome,
+    h.hostname AS host_hostname
+FROM execucoes_backup e
+INNER JOIN rotinas_backup r ON e.rotina_id = r.id
+INNER JOIN clientes c ON e.cliente_id = c.id
+LEFT JOIN hosts h ON e.host_id = h.id;
+
+-- ============================================
+-- FIM DO SCHEMA
+-- ============================================

@@ -2,18 +2,16 @@
 
 ## Autenticação
 
-Todas as requisições à API devem incluir a API Key no header de autorização.
+Todas as requisições à API devem incluir a API Key do cliente.
 
-### Headers obrigatórios
+### Header de autenticação
 
 ```
-Authorization: Bearer {API_KEY}
+X-API-Key: {API_KEY}
 Content-Type: application/json
 ```
 
-Alternativamente, a API Key pode ser enviada via:
-- Header `X-API-Key`: `{API_KEY}`
-- Query string `?api_key={API_KEY}`
+A API Key é gerada automaticamente ao criar um cliente no sistema.
 
 ## Endpoints
 
@@ -44,18 +42,19 @@ Registra uma execução de backup.
 **Body:**
 ```json
 {
-    "servidor": "string (obrigatório)",
-    "rotina": "string (obrigatório)",
+    "routine_key": "string (obrigatório) - chave única da rotina",
     "data_inicio": "datetime (obrigatório) - formato: Y-m-d H:i:s",
     "data_fim": "datetime (opcional) - formato: Y-m-d H:i:s",
     "status": "enum (obrigatório) - sucesso|falha|alerta|executando",
     "tamanho_bytes": "integer (opcional)",
     "destino": "string (opcional)",
     "mensagem_erro": "string (opcional)",
-    "tipo_backup": "string (opcional) - ex: full, incremental, diferencial",
-    "hostname": "string (opcional)",
-    "ip": "string (opcional)",
-    "sistema_operacional": "string (opcional)",
+    "host_info": {
+        "nome": "string (opcional) - nome do host",
+        "hostname": "string (opcional) - hostname do sistema",
+        "ip": "string (opcional) - endereço IP",
+        "sistema_operacional": "string (opcional) - SO do host"
+    },
     "detalhes": "object (opcional) - dados adicionais em JSON"
 }
 ```
@@ -63,20 +62,25 @@ Registra uma execução de backup.
 **Exemplo de requisição:**
 ```bash
 curl -X POST https://backup.seudominio.com/api/backup \
-  -H "Authorization: Bearer SUA_API_KEY" \
+  -H "X-API-Key: SUA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "servidor": "SRV-SQL-01",
-    "rotina": "Backup_Diario_SQL",
+    "routine_key": "rtk_abc123xyz456",
     "data_inicio": "2024-01-15 22:00:00",
     "data_fim": "2024-01-15 22:45:00",
     "status": "sucesso",
     "tamanho_bytes": 5368709120,
     "destino": "\\\\NAS\\Backups\\SQL\\20240115",
-    "tipo_backup": "full",
+    "host_info": {
+        "nome": "SRV-SQL-01",
+        "hostname": "srv-sql-01.domain.local",
+        "ip": "192.168.1.50",
+        "sistema_operacional": "Windows Server 2022"
+    },
     "detalhes": {
         "database": "ERP_Producao",
-        "compression": true
+        "compression": true,
+        "tipo_backup": "full"
     }
 }'
 ```
@@ -97,8 +101,19 @@ curl -X POST https://backup.seudominio.com/api/backup \
     "success": false,
     "error": "Dados inválidos",
     "errors": {
-        "servidor": "O campo 'servidor' é obrigatório",
-        "status": "Status inválido. Valores aceitos: sucesso, falha, alerta, executando"
+        "routine_key": "O campo 'routine_key' é obrigatório"
+    },
+    "status": 422
+}
+```
+
+**Resposta de erro - Rotina não encontrada (422):**
+```json
+{
+    "success": false,
+    "error": "Dados inválidos",
+    "errors": {
+        "routine_key": "Rotina não encontrada com a routine_key fornecida"
     },
     "status": 422
 }
@@ -108,8 +123,46 @@ curl -X POST https://backup.seudominio.com/api/backup \
 ```json
 {
     "success": false,
-    "error": "API Key inválida",
+    "error": "API Key inválida ou ausente",
     "status": 401
+}
+```
+
+---
+
+### GET /api/rotinas
+
+Retorna todas as rotinas ativas do cliente autenticado.
+
+**Autenticação:** API Key obrigatória
+
+**Exemplo de requisição:**
+```bash
+curl -X GET https://backup.seudominio.com/api/rotinas \
+  -H "X-API-Key: SUA_API_KEY"
+```
+
+**Resposta:**
+```json
+{
+    "success": true,
+    "rotinas": [
+        {
+            "id": 1,
+            "routine_key": "rtk_abc123xyz456",
+            "nome": "Backup_SQL_Diario",
+            "tipo": "full",
+            "destino": "\\\\NAS\\Backups",
+            "agendamento": "Diário às 22h",
+            "host_info": {
+                "nome": "SRV-SQL-01",
+                "hostname": "srv-sql-01.domain.local",
+                "ip": "192.168.1.50"
+            },
+            "ativa": true
+        }
+    ],
+    "total": 1
 }
 ```
 
@@ -121,110 +174,52 @@ Retorna informações do cliente autenticado.
 
 **Autenticação:** API Key obrigatória
 
+**Exemplo de requisição:**
+```bash
+curl -X GET https://backup.seudominio.com/api/me \
+  -H "X-API-Key: SUA_API_KEY"
+```
+
 **Resposta:**
 ```json
 {
     "success": true,
     "cliente": {
         "id": 1,
-        "identificador": "cliente-abc",
-        "nome": "Cliente ABC Ltda",
+        "identificador": "CLIENTE001",
+        "nome": "Empresa Exemplo Ltda",
         "ativo": true
     }
 }
 ```
 
-## Status de Backup
+---
 
-| Status | Descrição |
-|--------|-----------|
-| `sucesso` | Backup concluído com sucesso |
-| `falha` | Backup falhou |
-| `alerta` | Backup concluído com alertas |
-| `executando` | Backup em execução |
-
-## Códigos de Resposta HTTP
+## Códigos de Status HTTP
 
 | Código | Descrição |
 |--------|-----------|
 | 200 | Sucesso |
 | 201 | Criado com sucesso |
 | 400 | Requisição inválida |
-| 401 | Não autorizado (API Key inválida) |
+| 401 | Não autorizado |
+| 403 | Acesso negado |
+| 404 | Não encontrado |
 | 422 | Dados inválidos |
 | 500 | Erro interno do servidor |
 
-## Exemplos em Outras Linguagens
+## Valores de Status
 
-### Python
+| Status | Descrição |
+|--------|-----------|
+| `sucesso` | Backup concluído com sucesso |
+| `falha` | Backup falhou |
+| `alerta` | Backup concluído com avisos |
+| `executando` | Backup em execução |
 
-```python
-import requests
-import json
+## Notas
 
-url = "https://backup.seudominio.com/api/backup"
-headers = {
-    "Authorization": "Bearer SUA_API_KEY",
-    "Content-Type": "application/json"
-}
-data = {
-    "servidor": "SRV-SQL-01",
-    "rotina": "Backup_Diario",
-    "data_inicio": "2024-01-15 22:00:00",
-    "data_fim": "2024-01-15 22:45:00",
-    "status": "sucesso",
-    "tamanho_bytes": 5368709120
-}
-
-response = requests.post(url, headers=headers, json=data)
-print(response.json())
-```
-
-### Bash (curl)
-
-```bash
-#!/bin/bash
-
-API_URL="https://backup.seudominio.com/api/backup"
-API_KEY="SUA_API_KEY"
-
-curl -X POST "$API_URL" \
-  -H "Authorization: Bearer $API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "servidor": "'"$HOSTNAME"'",
-    "rotina": "Backup_Diario",
-    "data_inicio": "'"$(date -d '1 hour ago' '+%Y-%m-%d %H:%M:%S')"'",
-    "data_fim": "'"$(date '+%Y-%m-%d %H:%M:%S')"'",
-    "status": "sucesso"
-}'
-```
-
-### C# (.NET)
-
-```csharp
-using System;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
-
-var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Authorization", "Bearer SUA_API_KEY");
-
-var data = new {
-    servidor = "SRV-SQL-01",
-    rotina = "Backup_Diario",
-    data_inicio = DateTime.Now.AddHours(-1).ToString("yyyy-MM-dd HH:mm:ss"),
-    data_fim = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-    status = "sucesso"
-};
-
-var content = new StringContent(
-    JsonSerializer.Serialize(data),
-    Encoding.UTF8,
-    "application/json"
-);
-
-var response = await client.PostAsync("https://backup.seudominio.com/api/backup", content);
-Console.WriteLine(await response.Content.ReadAsStringAsync());
-```
+1. A `routine_key` é gerada automaticamente ao criar uma rotina no sistema.
+2. A `routine_key` pode ser visualizada e copiada na interface web.
+3. O campo `host_info` é opcional mas recomendado para melhor rastreabilidade.
+4. O campo `host_info` é armazenado na rotina para uso em execuções futuras.

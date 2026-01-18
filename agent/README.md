@@ -44,22 +44,25 @@ O Agente de Backup é uma solução client-side para coletar automaticamente inf
 ```powershell
 # Instalação básica (apenas Windows Server Backup)
 .\Install-BackupAgent.ps1 `
-    -ApiUrl "https://dev.gortan.com.br/world/bkpmng" `
+    -ApiUrl "https://backup.seudominio.com" `
     -ApiKey "sua-api-key-aqui" `
-    -ServerName "SRV-PROD-01"
+    -ServerName "SRV-PROD-01" `
+    -RoutineKey "rtk_sua_routine_key"
 
 # Instalação com Veeam habilitado
 .\Install-BackupAgent.ps1 `
-    -ApiUrl "https://dev.gortan.com.br/world/bkpmng" `
+    -ApiUrl "https://backup.seudominio.com" `
     -ApiKey "sua-api-key-aqui" `
     -ServerName "SRV-BACKUP-01" `
+    -RoutineKey "rtk_sua_routine_key" `
     -EnableVeeam
 
 # Instalação com configurações customizadas
 .\Install-BackupAgent.ps1 `
-    -ApiUrl "https://dev.gortan.com.br/world/bkpmng" `
+    -ApiUrl "https://backup.seudominio.com" `
     -ApiKey "sua-api-key-aqui" `
     -ServerName "SRV-DB-01" `
+    -RoutineKey "rtk_sua_routine_key" `
     -InstallPath "D:\BackupAgent" `
     -CheckIntervalMinutes 30 `
     -EnableVeeam `
@@ -102,12 +105,26 @@ Edite o arquivo `C:\BackupAgent\config\config.json`:
     "log_retention_days": 30
   },
   "api": {
-    "url": "https://dev.gortan.com.br/world/bkpmng",
+    "url": "https://backup.seudominio.com/api",
     "api_key": "sua-api-key-aqui",
     "timeout_seconds": 30,
     "retry_attempts": 3,
     "retry_delay_seconds": 5
   },
+  "rotinas": [
+    {
+      "routine_key": "rtk_sua_routine_key_aqui",
+      "nome": "Backup_Diario_WSB",
+      "collector_type": "windows_server_backup",
+      "enabled": true
+    },
+    {
+      "routine_key": "rtk_outra_routine_key",
+      "nome": "Backup_Veeam_Producao",
+      "collector_type": "veeam_backup",
+      "enabled": false
+    }
+  ],
   "collectors": {
     "windows_server_backup": {
       "enabled": true,
@@ -122,14 +139,14 @@ Edite o arquivo `C:\BackupAgent\config\config.json`:
     }
   },
   "filters": {
-    "ignore_jobs": ["JobTemporario", "Teste"],
+    "ignore_jobs": [],
     "only_jobs": [],
-    "min_size_mb": 100
+    "min_size_mb": 0
   },
   "notifications": {
     "send_on_failure": true,
     "send_on_warning": true,
-    "send_on_success": false
+    "send_on_success": true
   }
 }
 ```
@@ -141,6 +158,8 @@ Edite o arquivo `C:\BackupAgent\config\config.json`:
 | `server_name` | Nome identificador do servidor | Nome do computador |
 | `check_interval_minutes` | Intervalo de verificação | 60 minutos |
 | `api_key` | Chave de autenticação da API | *obrigatório* |
+| `rotinas[].routine_key` | Chave única da rotina no sistema | *obrigatório* |
+| `rotinas[].collector_type` | Tipo de coletor (windows_server_backup, veeam_backup) | *obrigatório* |
 | `ignore_jobs` | Jobs que serão ignorados | [] |
 | `only_jobs` | Processar apenas estes jobs | [] |
 | `min_size_mb` | Tamanho mínimo do backup (MB) | 0 |
@@ -323,7 +342,7 @@ Install-WindowsFeature -Name Windows-Server-Backup
 **Verificações:**
 1. Teste a conexão com a API:
    ```powershell
-   Invoke-RestMethod -Uri "https://dev.gortan.com.br/world/bkpmng/api/status"
+   Invoke-RestMethod -Uri "https://backup.seudominio.com/api/status"
    ```
 
 2. Verifique a API Key no arquivo de configuração
@@ -400,8 +419,8 @@ Para problemas ou dúvidas:
 
 1. Verifique os logs em `C:\BackupAgent\logs\`
 2. Execute em modo verbose: `-Verbose`
-3. Teste a API manualmente com o script `Test-BackupApi.ps1`
-4. Consulte a documentação da API em `/docs/API.md`
+3. Consulte a documentação da API em `/docs/API.md`
+4. Consulte o guia de configuração de servidores Windows em `/docs/SERVIDORES_WINDOWS.md`
 
 ---
 

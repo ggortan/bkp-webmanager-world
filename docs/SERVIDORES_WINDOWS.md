@@ -1,321 +1,276 @@
-# Configuração dos Servidores Windows
+# Configuração de Servidores Windows
 
-Este documento descreve como configurar os servidores Windows para enviar dados de backup para o Backup WebManager.
+Este guia explica como configurar servidores Windows para enviar relatórios de backup para o sistema Backup WebManager.
 
-## Visão Geral
+## Pré-requisitos
 
-O envio de dados de backup é feito através do script PowerShell `Send-BackupReport.ps1`, que deve ser executado após cada rotina de backup.
-
-## Requisitos
-
-- Windows Server 2012 R2 ou superior
+- Windows Server 2016 ou superior
 - PowerShell 5.1 ou superior
-- Acesso à internet (para conectar à API)
-- Certificado SSL válido no servidor do Backup WebManager
+- Acesso de administrador no servidor
+- Conectividade de rede com o servidor da aplicação
+- API Key gerada para o host no painel do WebManager
 
-## Instalação
+## Métodos de Envio
 
-### 1. Copiar o Script
+### 1. Usando o Agente de Backup (Recomendado)
 
-Copie o arquivo `Send-BackupReport.ps1` para uma pasta no servidor:
+O agente automatiza a coleta e envio de informações de backup de forma segura.
 
-```
-C:\Scripts\BackupWebManager\Send-BackupReport.ps1
-```
-
-### 2. Criar Diretório de Logs
+#### Instalação do Agente
 
 ```powershell
-New-Item -ItemType Directory -Path "C:\Logs\BackupWebManager" -Force
+# Baixar o instalador
+Invoke-WebRequest -Uri "https://seu-servidor/downloads/Install-BackupAgent.ps1" -OutFile "Install-BackupAgent.ps1"
+
+# Executar instalação
+.\Install-BackupAgent.ps1 -ApiUrl "https://seu-servidor/api" -RoutineKey "sua-routine-key"
 ```
 
-### 3. Configurar o Script
+#### Configuração Manual do Agente
 
-Edite o script e configure as variáveis:
+1. Copie a pasta `agent/` para o servidor Windows
+2. Crie o arquivo de configuração `config/config.json`:
+
+```json
+{
+    "ApiUrl": "https://seu-servidor/api/backups",
+    "RoutineKey": "ABC123XYZ",
+    "BackupType": "WSB",
+    "PollingIntervalMinutes": 60,
+    "LogPath": "C:\\BackupAgent\\logs",
+    "HostInfo": {
+        "name": "SERVER01",
+        "ip": "192.168.1.100",
+        "os": "Windows Server 2022"
+    }
+}
+```
+
+3. Configure a tarefa agendada:
 
 ```powershell
-# URL da API do Backup WebManager
-$ApiUrl = "https://backup.seudominio.com/api/backup"
+$action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
+    -Argument "-ExecutionPolicy Bypass -File C:\BackupAgent\BackupAgent.ps1"
 
-# API Key do cliente (obtida no painel do Backup WebManager)
-$ApiKey = "SUA_API_KEY_AQUI"
+$trigger = New-ScheduledTaskTrigger -Daily -At "08:00AM"
 
-# Nome do servidor (será usado para identificar este servidor)
-$NomeServidor = $env:COMPUTERNAME
+Register-ScheduledTask -TaskName "BackupAgent" `
+    -Action $action `
+    -Trigger $trigger `
+    -RunLevel Highest `
+    -User "SYSTEM"
 ```
 
-### 4. Obter a API Key
+### 2. Usando Script Simples
 
-1. Acesse o Backup WebManager
-2. Vá em **Clientes**
-3. Selecione o cliente correspondente
-4. Copie a **API Key** exibida
-
-## Uso
-
-### Execução Básica
+Para envios manuais ou casos específicos:
 
 ```powershell
-.\Send-BackupReport.ps1 -Rotina "Nome_da_Rotina" -Status "sucesso"
+.\Send-BackupReport.ps1 `
+    -ApiUrl "https://seu-servidor/api/backups" `
+    -RoutineKey "ABC123XYZ" `
+    -Status "success" `
+    -SizeBytes 1073741824 `
+    -Duration 3600 `
+    -Details "Backup completo realizado"
 ```
 
-### Parâmetros Disponíveis
+Parâmetros do script:
 
 | Parâmetro | Obrigatório | Descrição |
 |-----------|-------------|-----------|
-| `-Rotina` | Sim | Nome da rotina de backup |
-| `-Status` | Sim | sucesso, falha, alerta ou executando |
-| `-Destino` | Não | Caminho do backup |
-| `-MensagemErro` | Não | Mensagem de erro (para falhas) |
-| `-DataInicio` | Não | Data/hora de início (padrão: 30min atrás) |
-| `-DataFim` | Não | Data/hora de fim (padrão: agora) |
-| `-TamanhoBytes` | Não | Tamanho do backup em bytes |
-| `-TipoBackup` | Não | Tipo do backup (full, incremental, etc) |
+| `-ApiUrl` | Sim | URL da API do WebManager |
+| `-RoutineKey` | Sim | Chave única da rotina de backup |
+| `-Status` | Sim | Status: success, warning, error |
+| `-SizeBytes` | Não | Tamanho do backup em bytes |
+| `-Duration` | Não | Duração em segundos |
+| `-Details` | Não | Detalhes adicionais |
+| `-HostName` | Não | Nome do host (padrão: hostname atual) |
+| `-HostIP` | Não | IP do host |
 
-### Exemplos
+## Configurações por Tipo de Backup
 
-**Backup com sucesso:**
-```powershell
-.\Send-BackupReport.ps1 -Rotina "Backup_SQL_Diario" -Status "sucesso" -Destino "D:\Backups\SQL\20240115"
-```
+### Windows Server Backup (WSB)
 
-**Backup com falha:**
-```powershell
-.\Send-BackupReport.ps1 -Rotina "Backup_Files" -Status "falha" -MensagemErro "Erro: Disco de destino cheio"
-```
+Configure o `BackupType` como `"WSB"` no config.json:
 
-**Backup com todas as informações:**
-```powershell
-.\Send-BackupReport.ps1 `
-    -Rotina "Backup_Completo" `
-    -Status "sucesso" `
-    -Destino "\\NAS\Backups\SRV01\20240115" `
-    -DataInicio "2024-01-15 22:00:00" `
-    -DataFim "2024-01-15 23:30:00" `
-    -TamanhoBytes 10737418240 `
-    -TipoBackup "full"
-```
-
-## Integração com Rotinas de Backup
-
-### Backup do SQL Server
-
-Adicione ao final do seu script de backup SQL:
-
-```powershell
-# ... seu código de backup SQL aqui ...
-
-# Status baseado no resultado
-$status = if ($backupSucesso) { "sucesso" } else { "falha" }
-
-# Enviar relatório
-& "C:\Scripts\BackupWebManager\Send-BackupReport.ps1" `
-    -Rotina "Backup_SQL_$DatabaseName" `
-    -Status $status `
-    -Destino $caminhoBackup `
-    -MensagemErro $mensagemErro
-```
-
-### Backup do Windows Server Backup
-
-Crie um script pós-backup:
-
-```powershell
-# Obter último backup
-$lastBackup = Get-WBJob -Previous 1
-
-# Determinar status
-$status = switch ($lastBackup.JobState) {
-    "Completed" { "sucesso" }
-    "Failed" { "falha" }
-    default { "alerta" }
+```json
+{
+    "ApiUrl": "https://seu-servidor/api/backups",
+    "RoutineKey": "ROTINA-WSB-001",
+    "BackupType": "WSB",
+    "PollingIntervalMinutes": 60
 }
-
-# Enviar relatório
-& "C:\Scripts\BackupWebManager\Send-BackupReport.ps1" `
-    -Rotina "Windows_Server_Backup" `
-    -Status $status `
-    -DataInicio $lastBackup.StartTime `
-    -DataFim $lastBackup.EndTime `
-    -MensagemErro $lastBackup.ErrorDescription
 ```
 
-### Veeam Backup
+O módulo `WindowsBackupCollector.psm1` coleta automaticamente:
+- Último backup realizado
+- Status de sucesso/falha
+- Tamanho do backup
+- Duração da operação
 
-Configure um script pós-job no Veeam:
+### Veeam Backup & Replication
 
-```powershell
-param($Job)
+Configure o `BackupType` como `"Veeam"`:
 
-$status = switch ($Job.LastResult) {
-    "Success" { "sucesso" }
-    "Warning" { "alerta" }
-    "Failed" { "falha" }
-    default { "alerta" }
+```json
+{
+    "ApiUrl": "https://seu-servidor/api/backups",
+    "RoutineKey": "ROTINA-VEEAM-001",
+    "BackupType": "Veeam",
+    "VeeamJobName": "Daily Backup",
+    "PollingIntervalMinutes": 60
 }
-
-& "C:\Scripts\BackupWebManager\Send-BackupReport.ps1" `
-    -Rotina "Veeam_$($Job.Name)" `
-    -Status $status `
-    -DataInicio $Job.LastRun `
-    -DataFim (Get-Date) `
-    -TipoBackup $Job.BackupTargetType
 ```
 
-## Configuração no Agendador de Tarefas
+O módulo `VeeamBackupCollector.psm1` requer:
+- Veeam Backup & Replication instalado
+- PowerShell module do Veeam disponível
 
-Se você não pode modificar seus scripts de backup existentes, crie uma tarefa agendada:
+## Formato da API
 
-### 1. Abrir Agendador de Tarefas
+O agente envia dados no seguinte formato:
 
-```
-taskschd.msc
-```
-
-### 2. Criar Nova Tarefa
-
-1. Clique em **Criar Tarefa**
-2. **Geral**:
-   - Nome: `Backup WebManager - [Nome da Rotina]`
-   - Executar com privilégios mais altos: ✓
-   - Configurar para: Windows Server 2016
-
-### 3. Configurar Gatilho
-
-**Opção A - Executar após outro tarefa:**
-1. Vá em **Gatilhos** > **Novo**
-2. Iniciar a tarefa: **Em um evento**
-3. Log: **Microsoft-Windows-TaskScheduler/Operational**
-4. Origem: **TaskScheduler**
-5. ID do Evento: **102** (tarefa concluída)
-
-**Opção B - Executar em horário fixo:**
-1. Vá em **Gatilhos** > **Novo**
-2. Configure o horário após a janela de backup
-
-### 4. Configurar Ação
-
-1. Vá em **Ações** > **Novo**
-2. Ação: **Iniciar um programa**
-3. Programa/script:
-   ```
-   powershell.exe
-   ```
-4. Argumentos:
-   ```
-   -ExecutionPolicy Bypass -File "C:\Scripts\BackupWebManager\Send-BackupReport.ps1" -Rotina "Backup_Diario" -Status "sucesso" -Destino "D:\Backups"
-   ```
-
-### 5. Condições e Configurações
-
-- Em **Condições**: desmarque todas
-- Em **Configurações**:
-  - Permitir que a tarefa seja executada sob demanda: ✓
-  - Se a tarefa falhar, reiniciar: ✓
-
-## Logs
-
-Os logs são salvos em:
-```
-C:\Logs\BackupWebManager\backup_report_YYYY-MM-DD.log
-```
-
-### Verificar Logs
-
-```powershell
-Get-Content "C:\Logs\BackupWebManager\backup_report_$(Get-Date -Format 'yyyy-MM-dd').log" -Tail 50
-```
-
-### Limpar Logs Antigos
-
-Adicione uma tarefa agendada para limpar logs com mais de 30 dias:
-
-```powershell
-Get-ChildItem "C:\Logs\BackupWebManager" -Filter "*.log" | 
-    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | 
-    Remove-Item
-```
-
-## Tratamento de Falhas
-
-Se o envio falhar, o script:
-1. Tentará novamente até 3 vezes
-2. Aguardará 10 segundos entre tentativas
-3. Salvará o payload em arquivo para reenvio posterior
-
-### Reenviar Relatórios Pendentes
-
-Os arquivos pendentes são salvos em:
-```
-C:\Logs\BackupWebManager\failed_YYYYMMDD_HHmmss.json
-```
-
-Script para reenviar:
-
-```powershell
-$ApiUrl = "https://backup.seudominio.com/api/backup"
-$ApiKey = "SUA_API_KEY"
-$LogPath = "C:\Logs\BackupWebManager"
-
-Get-ChildItem $LogPath -Filter "failed_*.json" | ForEach-Object {
-    $payload = Get-Content $_.FullName -Raw
-    
-    try {
-        $headers = @{
-            "Authorization" = "Bearer $ApiKey"
-            "Content-Type" = "application/json"
-        }
-        
-        $response = Invoke-RestMethod -Uri $ApiUrl -Method Post -Headers $headers -Body $payload
-        
-        if ($response.success) {
-            Remove-Item $_.FullName
-            Write-Host "Reenviado: $($_.Name)"
-        }
-    }
-    catch {
-        Write-Host "Falha ao reenviar: $($_.Name)"
+```json
+{
+    "routine_key": "ABC123XYZ",
+    "status": "success",
+    "size_bytes": 1073741824,
+    "duration_seconds": 3600,
+    "details": "Backup concluído com sucesso",
+    "executed_at": "2025-01-15T03:00:00Z",
+    "host_info": {
+        "name": "SERVER01",
+        "ip": "192.168.1.100",
+        "os": "Windows Server 2022"
     }
 }
 ```
 
-## Solução de Problemas
+Campos obrigatórios:
+- `routine_key`: Chave da rotina cadastrada no WebManager
+- `status`: success, warning, error
+- `executed_at`: Data/hora da execução
 
-### Erro de Certificado SSL
+Campos opcionais:
+- `size_bytes`: Tamanho em bytes
+- `duration_seconds`: Duração em segundos
+- `details`: Mensagem ou log resumido
+- `host_info`: Objeto com informações do host (name, ip, os)
 
-Se houver erro de certificado, adicione temporariamente (não recomendado em produção):
+## Autenticação
 
-```powershell
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+A API usa autenticação via header:
+
 ```
+X-API-Key: sua-api-key-aqui
+```
+
+A API Key é obtida ao cadastrar o host no WebManager:
+1. Acesse **Hosts** no painel
+2. Clique em **Novo Host**
+3. Preencha os dados e salve
+4. Copie a API Key gerada
+
+## Troubleshooting
 
 ### Erro de Conexão
 
-1. Verifique se o servidor pode acessar a internet
-2. Teste a conectividade:
-   ```powershell
-   Test-NetConnection -ComputerName backup.seudominio.com -Port 443
-   ```
+Verifique:
+- Conectividade de rede com o servidor
+- Firewall liberando a porta (80/443)
+- URL da API correta
 
-### Erro de Autenticação
+```powershell
+# Testar conectividade
+Test-NetConnection -ComputerName "seu-servidor" -Port 443
+```
 
-1. Verifique se a API Key está correta
-2. Verifique se o cliente está ativo no sistema
-3. Teste a API Key:
-   ```powershell
-   Invoke-RestMethod -Uri "https://backup.seudominio.com/api/me" `
-       -Headers @{ "Authorization" = "Bearer SUA_API_KEY" }
-   ```
+### Erro de Autenticação (401)
 
-### Script não Executa
+- Verifique se a API Key está correta
+- Confirme se a API Key está ativa no painel
+- Verifique se o header X-API-Key está sendo enviado
 
-1. Verifique a política de execução:
-   ```powershell
-   Get-ExecutionPolicy
-   Set-ExecutionPolicy RemoteSigned -Scope LocalMachine
-   ```
+### Rotina não encontrada (404)
 
-2. Execute manualmente para ver erros:
-   ```powershell
-   & "C:\Scripts\BackupWebManager\Send-BackupReport.ps1" -Rotina "Teste" -Status "sucesso"
-   ```
+- Confirme se a `routine_key` existe no sistema
+- Verifique se a rotina está ativa
+- Confirme a grafia exata da chave
+
+### Logs do Agente
+
+Os logs são salvos em `C:\BackupAgent\logs\` por padrão:
+
+```powershell
+# Visualizar logs recentes
+Get-Content "C:\BackupAgent\logs\backup-agent.log" -Tail 50
+```
+
+## Segurança
+
+### Boas Práticas
+
+1. **HTTPS**: Sempre use HTTPS para a API
+2. **API Key**: Mantenha a chave segura e não versione em Git
+3. **Permissões**: Execute o agente com usuário de serviço dedicado
+4. **Logs**: Configure rotação de logs para evitar acúmulo
+
+### Armazenamento Seguro de Credenciais
+
+```powershell
+# Criar credencial segura (Windows Credential Manager)
+$apiKey = ConvertTo-SecureString "sua-api-key" -AsPlainText -Force
+$apiKey | ConvertFrom-SecureString | Set-Content "C:\BackupAgent\config\apikey.txt"
+
+# Ler credencial no script
+$secureKey = Get-Content "C:\BackupAgent\config\apikey.txt" | ConvertTo-SecureString
+$apiKeyPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
+)
+```
+
+## Integração com Task Scheduler
+
+### Exemplo Completo de Tarefa
+
+```powershell
+# Criar tarefa que executa a cada hora
+$action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
+    -Argument "-ExecutionPolicy Bypass -NoProfile -File C:\BackupAgent\BackupAgent.ps1" `
+    -WorkingDirectory "C:\BackupAgent"
+
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) `
+    -RepetitionInterval (New-TimeSpan -Hours 1) `
+    -RepetitionDuration (New-TimeSpan -Days 365)
+
+$settings = New-ScheduledTaskSettingsSet `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -StartWhenAvailable `
+    -RestartCount 3 `
+    -RestartInterval (New-TimeSpan -Minutes 5)
+
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+
+Register-ScheduledTask -TaskName "BackupAgent" `
+    -Action $action `
+    -Trigger $trigger `
+    -Settings $settings `
+    -Principal $principal `
+    -Description "Agente de monitoramento de backup"
+```
+
+### Verificar Status da Tarefa
+
+```powershell
+Get-ScheduledTask -TaskName "BackupAgent" | Get-ScheduledTaskInfo
+```
+
+## Suporte
+
+Em caso de dúvidas ou problemas:
+
+1. Consulte os logs do agente
+2. Verifique a documentação da API em `/docs/API.md`
+3. Confirme as configurações de rede e firewall

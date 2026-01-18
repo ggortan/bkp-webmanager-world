@@ -7,21 +7,21 @@
     "log_retention_days": 30
   },
   "api": {
-    "url": "https://dev.gortan.com.br/world/bkpmng",
-    "api_key": "sua-api-key-aqui",
+    "url": "https://backup.seudominio.com",
+    "api_key": "cole-aqui-a-api-key-do-cliente",
     "timeout_seconds": 30,
     "retry_attempts": 3,
     "retry_delay_seconds": 5
   },
   "rotinas": [
     {
-      "routine_key": "rtk_exemplo_rotina_1",
+      "routine_key": "rtk_cole_aqui_a_routine_key",
       "nome": "Backup_Windows_Server",
       "collector_type": "windows_server_backup",
       "enabled": true
     },
     {
-      "routine_key": "rtk_exemplo_rotina_2",
+      "routine_key": "rtk_cole_aqui_outra_routine_key",
       "nome": "Backup_Veeam",
       "collector_type": "veeam_backup",
       "enabled": false
@@ -52,6 +52,6 @@
   "notifications": {
     "send_on_failure": true,
     "send_on_warning": true,
-    "send_on_success": false
+    "send_on_success": true
   }
 }

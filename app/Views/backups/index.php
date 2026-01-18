@@ -55,7 +55,7 @@
                 <thead>
                     <tr>
                         <th>Cliente</th>
-                        <th>Servidor</th>
+                        <th>Host</th>
                         <th>Rotina</th>
                         <th class="text-center">Status</th>
                         <th>Data/Hora</th>
@@ -79,7 +79,7 @@
                                     <?= htmlspecialchars($exec['cliente_nome'] ?? '-') ?>
                                 </a>
                             </td>
-                            <td><?= htmlspecialchars($exec['servidor_nome'] ?? '-') ?></td>
+                            <td><?= htmlspecialchars($exec['host_nome'] ?? '-') ?></td>
                             <td><?= htmlspecialchars($exec['rotina_nome'] ?? '-') ?></td>
                             <td class="text-center">
                                 <span class="status-badge status-<?= $exec['status'] ?>">

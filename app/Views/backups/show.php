@@ -28,9 +28,9 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label text-muted small">Servidor</label>
+                        <label class="form-label text-muted small">Host</label>
                         <div class="fw-semibold">
-                            <?= htmlspecialchars($execucao['servidor_nome'] ?? '-') ?>
+                            <?= htmlspecialchars($execucao['host_nome'] ?? '-') ?>
                             <?php if (!empty($execucao['hostname'])): ?>
                                 <br><small class="text-muted"><?= htmlspecialchars($execucao['hostname']) ?></small>
                             <?php endif; ?>

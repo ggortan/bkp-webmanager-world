@@ -3,12 +3,12 @@
     Script para envio de resultados de backup para o Backup WebManager.
 
 .DESCRIPTION
-    Este script substitui o envio de e-mails após as rotinas de backup.
-    Ele coleta informações da execução e envia para a API do Backup WebManager.
+    Este script envia informações de execução de backup para a API do Backup WebManager.
+    Usa o formato baseado em routine_key para identificação da rotina.
 
 .NOTES
     Backup WebManager - World Informática
-    Versão: 1.0.0
+    Versão: 2.0.0
     
     CONFIGURAÇÃO:
     1. Preencha as variáveis de configuração abaixo
@@ -16,15 +16,15 @@
     3. Pode ser chamado diretamente com parâmetros
 
 .EXAMPLE
-    .\Send-BackupReport.ps1 -Rotina "Backup_Diario" -Status "sucesso" -Destino "\\Server\Backups"
+    .\Send-BackupReport.ps1 -RoutineKey "rtk_abc123xyz" -Status "sucesso" -Destino "\\Server\Backups"
     
 .EXAMPLE
-    .\Send-BackupReport.ps1 -Rotina "Backup_DB" -Status "falha" -MensagemErro "Disco cheio"
+    .\Send-BackupReport.ps1 -RoutineKey "rtk_abc123xyz" -Status "falha" -MensagemErro "Disco cheio"
 #>
 
 param (
     [Parameter(Mandatory=$true)]
-    [string]$Rotina,
+    [string]$RoutineKey,
     
     [Parameter(Mandatory=$true)]
     [ValidateSet("sucesso", "falha", "alerta", "executando")]
@@ -58,9 +58,6 @@ $ApiUrl = "https://seu-servidor.com/api/backup"
 
 # API Key do cliente (obtida no painel do Backup WebManager)
 $ApiKey = "SUA_API_KEY_AQUI"
-
-# Nome do servidor (será usado para identificar este servidor)
-$NomeServidor = $env:COMPUTERNAME
 
 # Caminho para o arquivo de log local
 $LogPath = "C:\Logs\BackupWebManager"
@@ -120,17 +117,21 @@ function Get-BackupSize {
 function Get-SystemInfo {
     try {
         $os = Get-CimInstance Win32_OperatingSystem
+        $ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" } | Select-Object -First 1).IPAddress
+        
         return @{
+            nome = $env:COMPUTERNAME
+            hostname = [System.Net.Dns]::GetHostName()
+            ip = $ip
             sistema_operacional = "$($os.Caption) $($os.Version)"
-            hostname = $env:COMPUTERNAME
-            ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq "Dhcp" -or $_.PrefixOrigin -eq "Manual" } | Select-Object -First 1).IPAddress
         }
     }
     catch {
         return @{
-            sistema_operacional = "Windows"
+            nome = $env:COMPUTERNAME
             hostname = $env:COMPUTERNAME
             ip = ""
+            sistema_operacional = "Windows"
         }
     }
 }
@@ -138,7 +139,7 @@ function Get-SystemInfo {
 # Função principal para enviar relatório
 function Send-BackupReport {
     Write-Log "Iniciando envio de relatório de backup..."
-    Write-Log "Rotina: $Rotina | Status: $Status"
+    Write-Log "RoutineKey: $RoutineKey | Status: $Status"
     
     # Calcula tamanho se não foi fornecido e o destino existe
     if ($TamanhoBytes -eq 0 -and ![string]::IsNullOrEmpty($Destino)) {
@@ -149,35 +150,31 @@ function Send-BackupReport {
     }
     
     # Obtém informações do sistema
-    $sysInfo = Get-SystemInfo
+    $hostInfo = Get-SystemInfo
     
-    # Monta o payload
+    # Monta o payload no novo formato
     $payload = @{
-        servidor = $NomeServidor
-        rotina = $Rotina
+        routine_key = $RoutineKey
         data_inicio = $DataInicio.ToString("yyyy-MM-dd HH:mm:ss")
         data_fim = $DataFim.ToString("yyyy-MM-dd HH:mm:ss")
         status = $Status
         destino = $Destino
         tamanho_bytes = $TamanhoBytes
         mensagem_erro = $MensagemErro
-        tipo_backup = $TipoBackup
-        hostname = $sysInfo.hostname
-        ip = $sysInfo.ip
-        sistema_operacional = $sysInfo.sistema_operacional
+        host_info = $hostInfo
         detalhes = @{
-            script_version = "1.0.0"
+            tipo_backup = $TipoBackup
+            script_version = "2.0.0"
             execution_date = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
         }
-    } | ConvertTo-Json -Depth 3
+    } | ConvertTo-Json -Depth 5
     
-    Write-Log "Payload montado: $payload" "DEBUG"
+    Write-Log "Payload montado" "DEBUG"
     
     # Configura os headers
     $headers = @{
-        "Content-Type" = "application/json"
+        "Content-Type" = "application/json; charset=utf-8"
         "Accept" = "application/json"
-        "Authorization" = "Bearer $ApiKey"
         "X-API-Key" = $ApiKey
     }
     

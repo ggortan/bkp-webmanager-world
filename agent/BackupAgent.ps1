@@ -266,25 +266,33 @@ function Invoke-BackupCollection {
         try {
             Import-Module "$Script:ModulesPath\WindowsBackupCollector.psm1" -Force
             
-            # Coleta de jobs do WSB
-            $wsbJobs = Get-WindowsServerBackupJobs -Hours $checkHours
+            # Busca a routine_key configurada para Windows Server Backup
+            $wsbRoutine = $Script:Config.rotinas | Where-Object { $_.collector_type -eq "windows_server_backup" -and $_.enabled }
             
-            foreach ($job in $wsbJobs) {
-                $standardData = ConvertTo-StandardBackupFormat -Job $job -ServerName $serverName
-                $collectedData += $standardData
+            if (-not $wsbRoutine) {
+                Write-Log "Nenhuma rotina habilitada para Windows Server Backup" -Level WARNING
             }
-            
-            # Coleta de tarefas agendadas
-            if ($Script:Config.collectors.windows_server_backup.check_event_log) {
-                $taskJobs = Get-TaskSchedulerBackups -Hours $checkHours
+            else {
+                # Coleta de jobs do WSB
+                $wsbJobs = Get-WindowsServerBackupJobs -Hours $checkHours
                 
-                foreach ($job in $taskJobs) {
-                    $standardData = ConvertTo-StandardBackupFormat -Job $job -ServerName $serverName
+                foreach ($job in $wsbJobs) {
+                    $standardData = ConvertTo-StandardBackupFormat -Job $job -ServerName $serverName -RoutineKey $wsbRoutine.routine_key
                     $collectedData += $standardData
                 }
+                
+                # Coleta de tarefas agendadas
+                if ($Script:Config.collectors.windows_server_backup.check_event_log) {
+                    $taskJobs = Get-TaskSchedulerBackups -Hours $checkHours
+                    
+                    foreach ($job in $taskJobs) {
+                        $standardData = ConvertTo-StandardBackupFormat -Job $job -ServerName $serverName -RoutineKey $wsbRoutine.routine_key
+                        $collectedData += $standardData
+                    }
+                }
+                
+                Write-Log "Windows Server Backup: $($wsbJobs.Count) jobs coletados" -Level INFO
             }
-            
-            Write-Log "Windows Server Backup: $($wsbJobs.Count) jobs coletados" -Level INFO
         }
         catch {
             Write-Log "Erro ao coletar dados do Windows Server Backup: $_" -Level ERROR
@@ -301,26 +309,34 @@ function Invoke-BackupCollection {
         try {
             Import-Module "$Script:ModulesPath\VeeamBackupCollector.psm1" -Force
             
-            $veeamServer = $Script:Config.collectors.veeam_backup.server
-            $veeamPort = $Script:Config.collectors.veeam_backup.port
+            # Busca a routine_key configurada para Veeam
+            $veeamRoutine = $Script:Config.rotinas | Where-Object { $_.collector_type -eq "veeam_backup" -and $_.enabled }
             
-            # Coleta jobs de backup
-            $veeamJobs = Get-VeeamBackupJobs -Hours $checkHours -Server $veeamServer -Port $veeamPort
-            
-            foreach ($job in $veeamJobs) {
-                $standardData = ConvertTo-StandardVeeamFormat -Job $job -ServerName $serverName
-                $collectedData += $standardData
+            if (-not $veeamRoutine) {
+                Write-Log "Nenhuma rotina habilitada para Veeam Backup" -Level WARNING
             }
-            
-            # Coleta jobs de replicação
-            $replicationJobs = Get-VeeamReplicationJobs -Hours $checkHours -Server $veeamServer -Port $veeamPort
-            
-            foreach ($job in $replicationJobs) {
-                $standardData = ConvertTo-StandardVeeamFormat -Job $job -ServerName $serverName
-                $collectedData += $standardData
+            else {
+                $veeamServer = $Script:Config.collectors.veeam_backup.server
+                $veeamPort = $Script:Config.collectors.veeam_backup.port
+                
+                # Coleta jobs de backup
+                $veeamJobs = Get-VeeamBackupJobs -Hours $checkHours -Server $veeamServer -Port $veeamPort
+                
+                foreach ($job in $veeamJobs) {
+                    $standardData = ConvertTo-StandardVeeamFormat -Job $job -ServerName $serverName -RoutineKey $veeamRoutine.routine_key
+                    $collectedData += $standardData
+                }
+                
+                # Coleta jobs de replicação
+                $replicationJobs = Get-VeeamReplicationJobs -Hours $checkHours -Server $veeamServer -Port $veeamPort
+                
+                foreach ($job in $replicationJobs) {
+                    $standardData = ConvertTo-StandardVeeamFormat -Job $job -ServerName $serverName -RoutineKey $veeamRoutine.routine_key
+                    $collectedData += $standardData
+                }
+                
+                Write-Log "Veeam Backup: $($veeamJobs.Count + $replicationJobs.Count) jobs coletados" -Level INFO
             }
-            
-            Write-Log "Veeam Backup: $($veeamJobs.Count + $replicationJobs.Count) jobs coletados" -Level INFO
         }
         catch {
             Write-Log "Erro ao coletar dados do Veeam: $_" -Level ERROR
@@ -333,13 +349,13 @@ function Invoke-BackupCollection {
     
     if ($Script:Config.filters.only_jobs.Count -gt 0) {
         $collectedData = $collectedData | Where-Object { 
-            $_.rotina -in $Script:Config.filters.only_jobs 
+            $_.rotina_nome -in $Script:Config.filters.only_jobs 
         }
     }
     
     if ($Script:Config.filters.ignore_jobs.Count -gt 0) {
         $collectedData = $collectedData | Where-Object { 
-            $_.rotina -notin $Script:Config.filters.ignore_jobs 
+            $_.rotina_nome -notin $Script:Config.filters.ignore_jobs 
         }
     }
     
@@ -379,7 +395,7 @@ function Invoke-BackupCollection {
         }
         
         if (-not $shouldSend) {
-            Write-Log "Backup '$($data.rotina)' ($($data.status)) ignorado por configuração de notificações" -Level DEBUG
+            Write-Log "Backup '$($data.rotina_nome)' ($($data.status)) ignorado por configuração de notificações" -Level DEBUG
             continue
         }
         

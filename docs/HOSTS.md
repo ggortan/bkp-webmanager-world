@@ -11,20 +11,6 @@ Com a evolução do sistema para suportar rotinas independentes, o termo "Servid
 - **Antes**: Servidores (tabela `servidores`, coluna `servidor_id`)
 - **Depois**: Hosts (tabela `hosts`, coluna `host_id`)
 
-### Migration
-
-A migração do banco de dados é realizada automaticamente através do arquivo:
-```
-database/migrations/003_rename_servidores_to_hosts.sql
-```
-
-Esta migração:
-- Renomeia a tabela `servidores` para `hosts`
-- Renomeia colunas `servidor_id` para `host_id` em todas as tabelas relacionadas
-- Atualiza índices e foreign keys
-- Recria views com os novos nomes
-- Mantém todos os dados existentes
-
 ## Características dos Hosts
 
 ### Campos

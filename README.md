@@ -15,18 +15,18 @@ Sistema centralizado de monitoramento de backups desenvolvido em PHP puro.
 - [Instalação](#instalação)
 - [Configuração](#configuração)
 - [Uso da API](#uso-da-api)
-- [Script PowerShell](#script-powershell)
+- [Agentes de Backup](#agentes-de-backup)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 
 ## 📖 Sobre
 
-O **Backup WebManager** é uma aplicação web corporativa que centraliza o monitoramento das rotinas de backup executadas em servidores Windows. Substitui o modelo tradicional de envio de relatórios por e-mail, oferecendo:
+O **Backup WebManager** é uma aplicação web corporativa que centraliza o monitoramento das rotinas de backup executadas em servidores e estações Windows. Substitui o modelo tradicional de envio de relatórios por e-mail, oferecendo:
 
 - Dashboard visual com status dos backups
 - Histórico completo de execuções
 - Alertas de falhas
 - Relatórios automáticos
-- API REST para integração com servidores
+- API REST para integração
 
 ## ✨ Funcionalidades
 
@@ -42,19 +42,18 @@ O **Backup WebManager** é uma aplicação web corporativa que centraliza o moni
 - Hosts organizados por cliente
 - Configuração de relatórios
 
-### Gestão de Hosts ⭐ NOVO
-- CRUD completo de hosts (anteriormente "servidores")
+### Gestão de Hosts
+- CRUD completo de hosts
 - Vinculação opcional de rotinas a hosts
 - Informações detalhadas: nome, hostname, IP, SO, tipo
 - Estatísticas de execuções por host
-- Organização flexível para diferentes ambientes
+- Suporte a: servidores, estações, VMs, containers
 
-### Gestão de Rotinas de Backup ⭐ NOVO
+### Gestão de Rotinas de Backup
 - Rotinas independentes vinculadas diretamente aos clientes
 - Routine Key única para cada rotina
 - Suporte a múltiplas rotinas por host
-- Informações do host (nome, IP, SO) armazenadas
-- Vincular ou não a hosts (opcional)
+- Informações do host armazenadas em JSON
 - Gerenciamento completo via interface web
 
 ### Histórico de Backups
@@ -77,8 +76,7 @@ O **Backup WebManager** é uma aplicação web corporativa que centraliza o moni
 - Endpoint seguro para recebimento de dados
 - Autenticação via API Key
 - Validação completa dos dados
-- **Formato baseado em Routine Key** ⭐
-- Endpoint para listar rotinas do cliente
+- Formato baseado em Routine Key
 
 ## 🛠 Stack Tecnológica
 
@@ -107,15 +105,15 @@ cd bkp-webmanager-world
 ### 2. Configure o ambiente
 
 ```bash
-cp .env.example .env
+cp config/config.example.php config/config.php
 ```
 
-Edite o arquivo `.env` com suas configurações.
+Edite o arquivo `config/config.php` com suas configurações.
 
 ### 3. Crie o banco de dados
 
 ```bash
-mysql -u root -p < database/migrations/001_create_tables.sql
+mysql -u root -p < database/schema.sql
 ```
 
 ### 4. Configure o servidor web
@@ -159,37 +157,47 @@ server {
 
 ## ⚙️ Configuração
 
-### Arquivo .env
+### Arquivo config/config.php
 
-```env
-# Aplicação
-APP_NAME="Backup WebManager"
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://backup.seudominio.com
-APP_KEY=sua-chave-secreta-32-chars
-
-# Banco de Dados
-DB_HOST=localhost
-DB_PORT=3306
-DB_DATABASE=backup_webmanager
-DB_USERNAME=seu_usuario
-DB_PASSWORD=sua_senha
-
-# Microsoft Entra (Azure AD)
-AZURE_CLIENT_ID=seu-client-id
-AZURE_CLIENT_SECRET=seu-client-secret
-AZURE_TENANT_ID=seu-tenant-id
-AZURE_REDIRECT_URI=https://backup.seudominio.com/auth/callback
-
-# SMTP (E-mail)
-MAIL_HOST=smtp.office365.com
-MAIL_PORT=587
-MAIL_USERNAME=noreply@seudominio.com
-MAIL_PASSWORD=sua_senha
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=noreply@seudominio.com
-MAIL_FROM_NAME="Backup WebManager"
+```php
+return [
+    // Aplicação
+    'app' => [
+        'name' => 'Backup WebManager',
+        'env' => 'production',
+        'debug' => false,
+        'url' => 'https://backup.seudominio.com',
+        'key' => 'sua-chave-secreta-32-caracteres',
+    ],
+    
+    // Banco de Dados
+    'database' => [
+        'host' => 'localhost',
+        'port' => 3306,
+        'database' => 'backup_webmanager',
+        'username' => 'seu_usuario',
+        'password' => 'sua_senha',
+    ],
+    
+    // Microsoft Entra (Azure AD)
+    'azure' => [
+        'client_id' => 'seu-client-id',
+        'client_secret' => 'seu-client-secret',
+        'tenant_id' => 'seu-tenant-id',
+        'redirect_uri' => 'https://backup.seudominio.com/auth/callback',
+    ],
+    
+    // SMTP (E-mail)
+    'mail' => [
+        'host' => 'smtp.office365.com',
+        'port' => 587,
+        'username' => 'noreply@seudominio.com',
+        'password' => 'sua_senha',
+        'encryption' => 'tls',
+        'from_address' => 'noreply@seudominio.com',
+        'from_name' => 'Backup WebManager',
+    ],
+];
 ```
 
 ### Configuração do Microsoft Entra
@@ -212,11 +220,9 @@ POST /api/backup
 
 **Headers:**
 ```
-Authorization: Bearer {API_KEY}
+X-API-Key: {API_KEY}
 Content-Type: application/json
 ```
-
-#### Novo Formato (Recomendado) - Baseado em Routine Key
 
 **Body:**
 ```json
@@ -228,7 +234,6 @@ Content-Type: application/json
     "tamanho_bytes": 5368709120,
     "destino": "\\\\NAS\\Backups\\SQL\\20240115",
     "mensagem_erro": null,
-    "tipo_backup": "full",
     "host_info": {
         "nome": "SRV-BACKUP-01",
         "hostname": "srv-backup-01.domain.local",
@@ -242,43 +247,10 @@ Content-Type: application/json
 }
 ```
 
-#### Formato Antigo (Compatibilidade Mantida)
-
-**Body:**
-```json
-{
-    "servidor": "SRV-BACKUP-01",
-    "rotina": "Backup_Diario_SQL",
-    "data_inicio": "2024-01-15 22:00:00",
-    "data_fim": "2024-01-15 22:45:00",
-    "status": "sucesso",
-    "tamanho_bytes": 5368709120,
-    "destino": "\\\\NAS\\Backups\\SQL\\20240115",
-    "mensagem_erro": null,
-    "tipo_backup": "full",
-    "detalhes": {
-        "database": "ERP_Producao",
-        "compression": true
-    }
-}
-```
-
-**Campos obrigatórios (novo formato):**
+**Campos obrigatórios:**
 - `routine_key` - Chave única da rotina (obtida na interface web)
 - `data_inicio` - Data/hora de início
-- `status` - Status da execução
-
-**Campos obrigatórios (formato antigo):**
-- `servidor` - Nome do servidor
-- `rotina` - Nome da rotina
-- `data_inicio` - Data/hora de início
-- `status` - Status da execução
-
-**Status possíveis:**
-- `sucesso` - Backup concluído com sucesso
-- `falha` - Backup falhou
-- `alerta` - Backup concluído com alertas
-- `executando` - Backup em execução
+- `status` - Status da execução (`sucesso`, `falha`, `alerta`, `executando`)
 
 **Resposta de sucesso (201):**
 ```json
@@ -298,7 +270,7 @@ GET /api/rotinas
 
 **Headers:**
 ```
-Authorization: Bearer {API_KEY}
+X-API-Key: {API_KEY}
 ```
 
 **Resposta:**
@@ -313,12 +285,6 @@ Authorization: Bearer {API_KEY}
             "tipo": "full",
             "destino": "\\\\NAS\\Backups",
             "agendamento": "Diário às 22h",
-            "host_info": {
-                "nome": "SRV-SQL-01",
-                "hostname": "srv-sql-01.domain.local",
-                "ip": "192.168.1.50",
-                "sistema_operacional": "Windows Server 2022"
-            },
             "ativa": true
         }
     ],
@@ -342,106 +308,114 @@ GET /api/status
 }
 ```
 
-## 🔄 Nova Arquitetura: Sistema Baseado em Rotinas
+## 🤖 Agentes de Backup
 
-A partir da versão 2.0, o sistema foi transformado para uma arquitetura baseada em **rotinas independentes**.
+O sistema inclui agentes PowerShell para coleta automática de dados de backup.
 
-### Mudanças Principais
+### Localização
 
-- **Rotinas Independentes**: As rotinas de backup agora são vinculadas diretamente aos clientes, não mais a servidores específicos
-- **Routine Key**: Cada rotina possui uma chave única (`routine_key`) para identificação
-- **Flexibilidade**: O mesmo host pode ter múltiplas rotinas cadastradas
-- **Abrangência**: Não se limita a servidores - qualquer host pode enviar dados de backup
+```
+agent/
+├── BackupAgent.ps1              # Agente principal
+├── Install-BackupAgent.ps1      # Script de instalação
+├── config/
+│   └── config.example.json      # Exemplo de configuração
+└── modules/
+    ├── WindowsBackupCollector.psm1  # Coletor Windows Server Backup
+    └── VeeamBackupCollector.psm1    # Coletor Veeam
+```
 
-### Benefícios
+### Instalação do Agente
 
-1. **Maior Flexibilidade**: Rotinas não dependem de servidores
-2. **Múltiplas Rotinas**: Mesmo host pode ter várias rotinas independentes
-3. **Qualquer Host**: Servidores, estações, VMs, containers, etc.
-4. **Configuração Simplificada**: Usa apenas a routine_key
-5. **Compatibilidade**: Formato antigo continua funcionando
+1. Copie a pasta `agent/` para o servidor Windows
+2. Execute como Administrador:
 
-### Como Usar
-
-1. **Criar Cliente**: Acesse Clientes > Criar Novo
-2. **Criar Rotina**: Acesse o cliente > Rotinas > Nova Rotina
-3. **Copiar Chaves**: Copie a API Key do cliente e a Routine Key da rotina
-4. **Configurar Agente**: Configure o agente com as chaves copiadas
-
-Veja a [documentação completa da transformação](docs/TRANSFORMACAO_ROTINAS.md) para mais detalhes.
-
-## 💻 Script PowerShell
-
-O script `scripts/Send-BackupReport.ps1` deve ser executado após cada rotina de backup.
+```powershell
+.\Install-BackupAgent.ps1 -ApiUrl "https://backup.seudominio.com" -ApiKey "sua-api-key" -ServerName "SRV-PROD-01"
+```
 
 ### Configuração
 
-1. Copie o script para o servidor Windows
-2. Edite as variáveis de configuração:
-   - `$ApiUrl` - URL da API
-   - `$ApiKey` - API Key do cliente
+Edite o arquivo `config/config.json`:
 
-### Uso
-
-```powershell
-# Backup com sucesso
-.\Send-BackupReport.ps1 -Rotina "Backup_Diario" -Status "sucesso" -Destino "D:\Backups\20240115"
-
-# Backup com falha
-.\Send-BackupReport.ps1 -Rotina "Backup_SQL" -Status "falha" -MensagemErro "Disco cheio"
-
-# Especificando todas as opções
-.\Send-BackupReport.ps1 `
-    -Rotina "Backup_Completo" `
-    -Status "sucesso" `
-    -Destino "\\NAS\Backups" `
-    -DataInicio "2024-01-15 22:00:00" `
-    -DataFim "2024-01-15 23:30:00" `
-    -TamanhoBytes 10737418240 `
-    -TipoBackup "full"
+```json
+{
+  "agent": {
+    "version": "1.0.0",
+    "server_name": "SRV-EXEMPLO-01",
+    "check_interval_minutes": 60,
+    "log_retention_days": 30
+  },
+  "api": {
+    "url": "https://backup.seudominio.com",
+    "api_key": "sua-api-key",
+    "timeout_seconds": 30,
+    "retry_attempts": 3
+  },
+  "rotinas": [
+    {
+      "routine_key": "rtk_sua_rotina",
+      "nome": "Backup_Windows_Server",
+      "collector_type": "windows_server_backup",
+      "enabled": true
+    }
+  ],
+  "collectors": {
+    "windows_server_backup": {
+      "enabled": true,
+      "check_event_log": true,
+      "event_log_hours": 24
+    },
+    "veeam_backup": {
+      "enabled": false,
+      "server": "localhost",
+      "port": 9392
+    }
+  }
+}
 ```
 
-### Agendador de Tarefas
+### Tipos de Coletores
 
-Configure no Agendador de Tarefas do Windows para executar após cada backup:
+- **Windows Server Backup**: Coleta dados do Windows Server Backup nativo
+- **Veeam Backup**: Coleta dados do Veeam Backup & Replication
+- **Task Scheduler**: Coleta dados de tarefas agendadas de backup
 
-1. Abra o Agendador de Tarefas
-2. Crie uma nova tarefa
-3. Configure o gatilho para executar após o backup
-4. Ação: `powershell.exe`
-5. Argumentos: `-ExecutionPolicy Bypass -File "C:\Scripts\Send-BackupReport.ps1" -Rotina "Nome_Backup" -Status "sucesso"`
+### Execução Manual
+
+```powershell
+# Execução única (para testes)
+.\BackupAgent.ps1 -RunOnce
+
+# Execução em modo de teste (não envia para API)
+.\BackupAgent.ps1 -RunOnce -TestMode
+
+# Execução contínua (modo serviço)
+.\BackupAgent.ps1
+```
 
 ## 📁 Estrutura do Projeto
 
 ```
 bkp-webmanager-world/
 ├── app/
-│   ├── controllers/      # Controllers da aplicação
-│   ├── models/          # Modelos de dados
-│   ├── services/        # Serviços (Auth, Email, Backup)
-│   ├── middleware/      # Middlewares (Auth, CSRF, API)
-│   ├── helpers/         # Funções auxiliares
-│   ├── libraries/       # Bibliotecas nativas (JWT, SMTP)
-│   └── views/           # Templates HTML
-│       ├── layouts/     # Layout principal
-│       ├── auth/        # Páginas de autenticação
-│       ├── dashboard/   # Dashboard
-│       ├── clientes/    # Gestão de clientes
-│       ├── usuarios/    # Gestão de usuários
-│       ├── backups/     # Histórico de backups
-│       ├── relatorios/  # Relatórios
-│       └── errors/      # Páginas de erro
+│   ├── Controllers/     # Controllers da aplicação
+│   ├── Models/          # Modelos de dados
+│   ├── Services/        # Serviços (Auth, Email, Backup)
+│   ├── Middleware/      # Middlewares (Auth, CSRF, API)
+│   ├── Helpers/         # Funções auxiliares
+│   ├── Libraries/       # Bibliotecas nativas (JWT, SMTP)
+│   └── Views/           # Templates HTML
+├── agent/               # Agentes PowerShell para Windows
+│   ├── modules/         # Módulos de coleta
+│   └── config/          # Configuração do agente
 ├── config/              # Arquivos de configuração
 ├── database/
-│   └── migrations/      # Scripts SQL
-├── public/              # Arquivos públicos
-│   ├── index.php        # Ponto de entrada
-│   ├── .htaccess        # Configuração Apache
-│   └── assets/          # CSS, JS, imagens
+│   └── schema.sql       # Schema do banco de dados
+├── public/              # Arquivos públicos (ponto de entrada)
 ├── routes/              # Definição de rotas
-├── scripts/             # Scripts PowerShell
+├── scripts/             # Scripts auxiliares PowerShell
 ├── docs/                # Documentação adicional
-├── .env.example         # Exemplo de configuração
 └── README.md            # Este arquivo
 ```
 

@@ -47,45 +47,57 @@ chmod -R 775 /var/www/bkp-webmanager-world/logs
 ### 3. Configurar Ambiente
 
 ```bash
-cp .env.example .env
-nano .env
+cp config/config.example.php config/config.php
+nano config/config.php
 ```
 
-Edite o arquivo `.env` com suas configurações:
+Edite o arquivo `config/config.php` com suas configurações:
 
-```env
-# Aplicação
-APP_NAME="Backup WebManager"
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://backup.seudominio.com
-APP_KEY=gere-uma-chave-aleatoria-de-32-caracteres
-
-# Banco de Dados
-DB_HOST=localhost
-DB_PORT=3306
-DB_DATABASE=backup_webmanager
-DB_USERNAME=backup_user
-DB_PASSWORD=sua_senha_segura
-
-# Microsoft Entra (Azure AD)
-AZURE_CLIENT_ID=seu-client-id-do-azure
-AZURE_CLIENT_SECRET=seu-client-secret
-AZURE_TENANT_ID=seu-tenant-id
-AZURE_REDIRECT_URI=https://backup.seudominio.com/auth/callback
-
-# E-mail SMTP
-MAIL_HOST=smtp.office365.com
-MAIL_PORT=587
-MAIL_USERNAME=noreply@seudominio.com
-MAIL_PASSWORD=sua_senha_email
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=noreply@seudominio.com
-MAIL_FROM_NAME="Backup WebManager"
-
-# Sessão
-SESSION_LIFETIME=120
-SESSION_SECURE=true
+```php
+return [
+    // Aplicação
+    'app' => [
+        'name' => 'Backup WebManager',
+        'env' => 'production',
+        'debug' => false,
+        'url' => 'https://backup.seudominio.com',
+        'key' => 'gere-uma-chave-aleatoria-de-32-caracteres',
+    ],
+    
+    // Banco de Dados
+    'database' => [
+        'host' => 'localhost',
+        'port' => 3306,
+        'database' => 'backup_webmanager',
+        'username' => 'backup_user',
+        'password' => 'sua_senha_segura',
+    ],
+    
+    // Microsoft Entra (Azure AD)
+    'azure' => [
+        'client_id' => 'seu-client-id-do-azure',
+        'client_secret' => 'seu-client-secret',
+        'tenant_id' => 'seu-tenant-id',
+        'redirect_uri' => 'https://backup.seudominio.com/auth/callback',
+    ],
+    
+    // E-mail SMTP
+    'mail' => [
+        'host' => 'smtp.office365.com',
+        'port' => 587,
+        'username' => 'noreply@seudominio.com',
+        'password' => 'sua_senha_email',
+        'encryption' => 'tls',
+        'from_address' => 'noreply@seudominio.com',
+        'from_name' => 'Backup WebManager',
+    ],
+    
+    // Sessão
+    'session' => [
+        'lifetime' => 120,
+        'secure' => true,
+    ],
+];
 ```
 
 ### 4. Criar Banco de Dados
@@ -101,8 +113,8 @@ GRANT ALL PRIVILEGES ON backup_webmanager.* TO 'backup_user'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 
-# Executar migrations
-mysql -u backup_user -p backup_webmanager < database/migrations/001_create_tables.sql
+# Executar script de criação do schema
+mysql -u backup_user -p backup_webmanager < database/schema.sql
 ```
 
 ### 5. Configurar Apache
