@@ -105,12 +105,26 @@ class ApiBackupController extends Controller
      */
     public function status(): void
     {
-        $this->json([
+        // Resposta mínima - sem conexão com banco para diagnóstico
+        $response = [
             'success' => true,
             'status' => 'online',
             'version' => '1.0.0',
-            'timestamp' => date('c')
-        ]);
+            'timestamp' => date('c'),
+            'php_version' => PHP_VERSION
+        ];
+        
+        // Tenta verificar banco de dados
+        try {
+            $pdo = \App\Database::getConnection();
+            $stmt = $pdo->query('SELECT 1');
+            $response['database'] = 'connected';
+        } catch (\Exception $e) {
+            $response['database'] = 'error';
+            $response['database_error'] = $e->getMessage();
+        }
+        
+        $this->json($response);
     }
 
     /**

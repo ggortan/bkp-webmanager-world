@@ -1,57 +1,32 @@
 {
-  "agent": {
-    "version": "1.0.0",
-    "server_name": "SRV-EXEMPLO-01",
-    "check_interval_minutes": 60,
-    "log_level": "INFO",
-    "log_retention_days": 30
+  "_README": "Copie este arquivo para config.json e ajuste os valores",
+
+  "api_url": "https://backup.seudominio.com",
+  "api_token": "COLE_AQUI_A_API_KEY_DO_CLIENTE",
+  "host_name": "SRV-EXEMPLO-01",
+
+  "telemetry": {
+    "enabled": true,
+    "interval_minutes": 5
   },
-  "api": {
-    "url": "https://backup.seudominio.com",
-    "api_key": "cole-aqui-a-api-key-do-cliente",
-    "timeout_seconds": 30,
-    "retry_attempts": 3,
-    "retry_delay_seconds": 5
+
+  "backup": {
+    "check_interval_minutes": 15,
+    "collectors": ["wsb", "veeam"]
   },
-  "rotinas": [
+
+  "routines": [
     {
-      "routine_key": "rtk_cole_aqui_a_routine_key",
-      "nome": "Backup_Windows_Server",
-      "collector_type": "windows_server_backup",
-      "enabled": true
+      "_comment": "Rotina para Windows Server Backup - obtém do cmdlet Get-WBJob",
+      "routine_key": "rtk_COLE_A_ROUTINE_KEY_AQUI",
+      "source": "wsb",
+      "job_name": null
     },
     {
-      "routine_key": "rtk_cole_aqui_outra_routine_key",
-      "nome": "Backup_Veeam",
-      "collector_type": "veeam_backup",
-      "enabled": false
+      "_comment": "Rotina para job específico do Veeam - obtém do cmdlet Get-VBRJob",
+      "routine_key": "rtk_COLE_OUTRA_ROUTINE_KEY",
+      "source": "veeam",
+      "job_name": "Backup Diário - Servidor Arquivos"
     }
-  ],
-  "collectors": {
-    "windows_server_backup": {
-      "enabled": true,
-      "check_event_log": true,
-      "event_log_hours": 24
-    },
-    "veeam_backup": {
-      "enabled": false,
-      "veeam_ps_snapin": "VeeamPSSnapin",
-      "server": "localhost",
-      "port": 9392
-    },
-    "custom_scripts": {
-      "enabled": false,
-      "scripts_path": "C:\\BackupAgent\\custom"
-    }
-  },
-  "filters": {
-    "ignore_jobs": [],
-    "only_jobs": [],
-    "min_size_mb": 0
-  },
-  "notifications": {
-    "send_on_failure": true,
-    "send_on_warning": true,
-    "send_on_success": true
-  }
+  ]
 }
