@@ -66,7 +66,24 @@ class BackupService
             }
             
             // Adiciona host_info aos detalhes se disponível
-            $detalhes = !empty($data['detalhes']) ? $data['detalhes'] : [];
+            $detalhes = [];
+            
+            // Processa campo detalhes
+            if (!empty($data['detalhes'])) {
+                if (is_string($data['detalhes'])) {
+                    // Se for string, tenta decodificar como JSON
+                    $decoded = json_decode($data['detalhes'], true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $detalhes = $decoded;
+                    } else {
+                        // Se não for JSON válido, coloca a string em um campo 'mensagem'
+                        $detalhes = ['mensagem' => $data['detalhes']];
+                    }
+                } elseif (is_array($data['detalhes'])) {
+                    $detalhes = $data['detalhes'];
+                }
+            }
+            
             if ($hostInfo) {
                 $detalhes['host_info'] = $hostInfo;
             }
