@@ -51,8 +51,8 @@
     <div class="col-md-3">
         <div class="stat-card info position-relative">
             <i class="bi bi-hdd-network stat-icon"></i>
-            <div class="stat-value"><?= $cliente['total_servidores'] ?? 0 ?></div>
-            <div class="stat-label">Servidores</div>
+            <div class="stat-value"><?= $cliente['total_hosts'] ?? 0 ?></div>
+            <div class="stat-label">Hosts</div>
         </div>
     </div>
 </div>
@@ -128,11 +128,11 @@
         <?php endif; ?>
     </div>
     
-    <!-- Servidores -->
+    <!-- Hosts -->
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-hdd-network me-2"></i>Servidores</span>
+                <span><i class="bi bi-hdd-network me-2"></i>Hosts</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -145,7 +145,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (empty($servidores)): ?>
+                            <?php if (empty($hosts)): ?>
                             <tr>
                                 <td colspan="3" class="text-center text-muted py-4">
                                     Nenhum servidor registrado.<br>
@@ -153,19 +153,19 @@
                                 </td>
                             </tr>
                             <?php else: ?>
-                                <?php foreach ($servidores as $servidor): ?>
+                                <?php foreach ($hosts as $host): ?>
                                 <tr>
                                     <td>
-                                        <strong><?= htmlspecialchars($servidor['nome']) ?></strong>
-                                        <?php if ($servidor['sistema_operacional']): ?>
-                                            <br><small class="text-muted"><?= htmlspecialchars($servidor['sistema_operacional']) ?></small>
+                                        <strong><?= htmlspecialchars($host['nome']) ?></strong>
+                                        <?php if ($host['sistema_operacional']): ?>
+                                            <br><small class="text-muted"><?= htmlspecialchars($host['sistema_operacional']) ?></small>
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <?= htmlspecialchars($servidor['hostname'] ?? $servidor['ip'] ?? '-') ?>
+                                        <?= htmlspecialchars($host['hostname'] ?? $host['ip'] ?? '-') ?>
                                     </td>
                                     <td class="text-center">
-                                        <?php if ($servidor['ativo']): ?>
+                                        <?php if ($host['ativo']): ?>
                                             <span class="badge bg-success">Ativo</span>
                                         <?php else: ?>
                                             <span class="badge bg-secondary">Inativo</span>

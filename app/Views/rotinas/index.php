@@ -82,7 +82,7 @@
                         <td>
                             <?php if ($hostInfo && !empty($hostInfo['nome'])): ?>
                                 <?= htmlspecialchars($hostInfo['nome']) ?>
-                            <?php elseif ($rotina['servidor_id']): ?>
+                            <?php elseif ($rotina['host_id']): ?>
                                 <small class="text-muted">Servidor vinculado</small>
                             <?php else: ?>
                                 <span class="text-muted">-</span>
