@@ -80,7 +80,7 @@ Router::group(['middleware' => ['auth', 'csrf']], function () {
     // Backups
     Router::get('/backups', [BackupController::class, 'index']);
     Router::get('/backups/{id}', [BackupController::class, 'show']);
-    Router::get('/backups/servidores/{clienteId}', [BackupController::class, 'servidoresByCliente']);
+    Router::get('/backups/hosts/{clienteId}', [BackupController::class, 'hostsByCliente']);
     
     // Relatórios
     Router::get('/relatorios', [RelatorioController::class, 'index']);

@@ -72,24 +72,6 @@ class RotinaBackup extends Model
     }
 
     /**
-     * Lista rotinas de um servidor (compatibilidade)
-     * @deprecated Use byHost() instead
-     */
-    public static function byServidor(int $servidorId): array
-    {
-        return self::byHost($servidorId);
-    }
-
-    /**
-     * Lista rotinas ativas de um servidor (compatibilidade)
-     * @deprecated Use ativasByHost() instead
-     */
-    public static function ativasByServidor(int $servidorId): array
-    {
-        return self::ativasByHost($servidorId);
-    }
-
-    /**
      * Encontra rotina pelo nome e cliente
      */
     public static function findByNomeAndCliente(string $nome, int $clienteId): ?array
@@ -105,15 +87,6 @@ class RotinaBackup extends Model
     {
         $sql = "SELECT * FROM rotinas_backup WHERE nome = ? AND host_id = ?";
         return \App\Database::fetch($sql, [$nome, $hostId]);
-    }
-
-    /**
-     * Encontra rotina pelo nome e servidor (compatibilidade)
-     * @deprecated Use findByNomeAndHost() instead
-     */
-    public static function findByNomeAndServidor(string $nome, int $servidorId): ?array
-    {
-        return self::findByNomeAndHost($nome, $servidorId);
     }
 
     /**

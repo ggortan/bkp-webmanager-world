@@ -98,13 +98,4 @@ class BackupController extends Controller
             'hosts' => $hosts
         ]);
     }
-
-    /**
-     * Obtém servidores de um cliente (AJAX) - compatibilidade
-     * @deprecated Use hostsByCliente() instead
-     */
-    public function servidoresByCliente(int $clienteId): void
-    {
-        $this->hostsByCliente($clienteId);
-    }
 }

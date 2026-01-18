@@ -77,8 +77,7 @@ O **Backup WebManager** é uma aplicação web corporativa que centraliza o moni
 - Endpoint seguro para recebimento de dados
 - Autenticação via API Key
 - Validação completa dos dados
-- **Novo formato baseado em Routine Key** ⭐
-- Compatibilidade com formato antigo mantida
+- **Formato baseado em Routine Key** ⭐
 - Endpoint para listar rotinas do cliente
 
 ## 🛠 Stack Tecnológica

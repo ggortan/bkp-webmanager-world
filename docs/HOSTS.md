@@ -170,23 +170,28 @@ O método `withStats()` retorna:
   - `sucesso`: Execuções com sucesso
   - `falha`: Execuções com falha
 
-## Compatibilidade com API Antiga
+## Formato da API
 
-A API de backup mantém compatibilidade com o formato antigo que usa "servidor":
+A API de backup utiliza o formato baseado em `routine_key`:
 
 ```json
 {
-  "servidor": "SRV-FILESERVER-01",
-  "rotina": "Backup_Diario",
+  "routine_key": "rtk_abc123456789...",
   "status": "sucesso",
-  "data_inicio": "2026-01-18 22:00:00"
+  "data_inicio": "2026-01-18 22:00:00",
+  "data_fim": "2026-01-18 22:15:00",
+  "tamanho_bytes": 1048576,
+  "destino": "\\NAS\Backups\SQL",
+  "host_info": {
+    "nome": "SRV-FILESERVER-01",
+    "hostname": "fileserver.empresa.local",
+    "ip": "192.168.1.100",
+    "sistema_operacional": "Windows Server 2022"
+  }
 }
 ```
 
-Internamente, o sistema:
-1. Busca ou cria um host com o nome fornecido
-2. Associa a rotina ao host criado
-3. Registra a execução vinculada ao host
+O campo `host_info` é opcional e pode ser atualizado automaticamente pelo agente a cada execução.
 
 ## Melhores Práticas
 

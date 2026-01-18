@@ -70,7 +70,7 @@ mysql -u root -p backup_webmanager < database/migrations/003_rename_servidores_t
 **Arquivos modificados**:
 - `app/Services/BackupService.php` ✅
   - Atualizado para usar `host_id`
-  - **Mantém compatibilidade com API antiga** (aceita `servidor`)
+  - Requer `routine_key` para todas as execuções
 
 ### 5. Rotas
 
@@ -113,35 +113,40 @@ POST /clientes/{clienteId}/hosts/{id}/toggle-status
 - `docs/GUIA_MIGRACAO.md` ✅
 - `docs/TRANSFORMACAO_ROTINAS.md` ✅
 
-## 🔄 Compatibilidade Retroativa
+## 🔄 Formato da API
 
-### API Antiga FUNCIONA! ✅
-
-O formato antigo da API continua funcionando:
-
-```json
-{
-  "servidor": "SRV-FILESERVER-01",
-  "rotina": "Backup_Diario",
-  "status": "sucesso",
-  "data_inicio": "2026-01-18 22:00:00"
-}
-```
-
-Internamente, o sistema:
-1. Cria ou encontra o host com o nome fornecido
-2. Associa a rotina ao host
-3. Registra a execução normalmente
-
-### Novo Formato (Recomendado)
+A API utiliza o formato baseado em `routine_key`:
 
 ```json
 {
   "routine_key": "rtk_abc123456789...",
   "status": "sucesso",
-  "data_inicio": "2026-01-18 22:00:00"
+  "data_inicio": "2026-01-18 22:00:00",
+  "data_fim": "2026-01-18 22:15:00",
+  "tamanho_bytes": 1048576,
+  "destino": "\\NAS\Backups\SQL",
+  "host_info": {
+    "nome": "SRV-FILESERVER-01",
+    "hostname": "fileserver.empresa.local",
+    "ip": "192.168.1.100",
+    "sistema_operacional": "Windows Server 2022"
+  }
 }
 ```
+
+**Campos obrigatórios:**
+- `routine_key`: Chave única da rotina
+- `status`: sucesso, falha, alerta ou executando
+- `data_inicio`: Data e hora de início da execução
+
+**Campos opcionais:**
+- `data_fim`: Data e hora de término
+- `tamanho_bytes`: Tamanho do backup em bytes
+- `destino`: Caminho de destino do backup
+- `mensagem_erro`: Mensagem de erro (para falhas)
+- `host_info`: Informações do host (atualizado automaticamente)
+- `detalhes`: JSON com detalhes adicionais
+
 
 ## 🚀 Como Fazer Deploy
 
@@ -188,8 +193,7 @@ Antes de considerar o deploy completo, teste:
 - [ ] Vincular rotina a host
 - [ ] Criar rotina independente (sem host)
 - [ ] Ver detalhes do host com estatísticas
-- [ ] Testar API com formato antigo (`servidor` + `rotina`)
-- [ ] Testar API com formato novo (`routine_key`)
+- [ ] Testar API com `routine_key`
 - [ ] Deletar host sem rotinas (deve funcionar)
 - [ ] Tentar deletar host com rotinas ativas (deve falhar com mensagem)
 - [ ] Verificar que rotinas existentes continuam funcionando
@@ -198,22 +202,14 @@ Antes de considerar o deploy completo, teste:
 
 Nenhum! Todos os issues da code review foram corrigidos:
 - ✅ Table aliases em SQL queries
-- ✅ API validation para backward compatibility
+- ✅ API validation atualizada
 
 ## 📝 Notas Importantes
 
-1. **Sem Breaking Changes**: A API antiga continua funcionando
+1. **API requer routine_key**: Todas as execuções devem usar o formato baseado em routine_key
 2. **Dados Preservados**: Migration mantém 100% dos dados
 3. **Reversível**: A migration inclui instruções de rollback (comentadas)
 4. **Testado**: Code review passou sem issues críticos
-
-## 🎉 Benefícios da Mudança
-
-1. **Nomenclatura Melhor**: "Host" é mais genérico que "Servidor"
-2. **Flexibilidade**: Suporta VMs, containers, workstations
-3. **Organização**: CRUD completo facilita gerenciamento
-4. **Estatísticas**: View de hosts mostra métricas úteis
-5. **Documentação**: Docs completas sobre o novo sistema
 
 ## 📞 Suporte
 
