@@ -15,6 +15,9 @@ use App\Helpers\Security;
 class RotinaBackupController extends Controller
 {
     private AuthService $authService;
+    
+    // Número padrão de execuções a exibir
+    const DEFAULT_EXECUTION_LIMIT = 10;
 
     public function __construct()
     {
@@ -158,7 +161,7 @@ class RotinaBackupController extends Controller
         }
         
         // Busca últimas execuções usando o model
-        $execucoes = RotinaBackup::getRecentExecutions($id, 10);
+        $execucoes = RotinaBackup::getRecentExecutions($id, self::DEFAULT_EXECUTION_LIMIT);
         
         // Busca servidor se vinculado
         $servidor = null;

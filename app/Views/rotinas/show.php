@@ -200,11 +200,7 @@
                                     </a>
                                 </td>
                                 <td><?= $duracao ?: '-' ?></td>
-                                <td>
-                                    <?php
-                                        echo format_bytes($exec['tamanho_bytes']);
-                                    ?>
-                                </td>
+                                <td><?= format_bytes($exec['tamanho_bytes']) ?></td>
                                 <td class="text-center">
                                     <?php
                                         $badges = [

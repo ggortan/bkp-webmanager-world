@@ -73,12 +73,14 @@ class RotinaBackup extends Model
 
     /**
      * Gera uma routine_key única
+     * Formato: 'rtk_' (4 chars) + 28 hex chars = 32 chars total
      */
     public static function generateRoutineKey(): string
     {
         do {
-            // Gera 28 caracteres aleatórios + prefixo 'rtk_' = 32 caracteres total
-            $key = 'rtk_' . Security::generateToken(14); // 14 bytes = 28 hex chars
+            // Security::generateToken(14) gera 14 bytes = 28 hex chars
+            // Com prefixo 'rtk_' (4 chars) = 32 chars total
+            $key = 'rtk_' . Security::generateToken(14);
             $exists = self::findByRoutineKey($key);
         } while ($exists);
         

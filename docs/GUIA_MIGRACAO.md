@@ -332,5 +332,5 @@ Para dúvidas ou problemas durante a migração:
 
 ---
 
-**Última atualização:** Janeiro 2026  
+**Última atualização:** 18/01/2026  
 **Versão do Guia:** 1.0

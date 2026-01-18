@@ -87,7 +87,7 @@ BEGIN
             LEAVE read_loop;
         END IF;
         
--- Gera uma chave única baseada em random bytes (similar ao método do Model)
+-- Gera uma chave única baseada em random bytes (14 bytes = 28 hex chars + prefixo 'rtk_' = 32 chars)
         UPDATE rotinas_backup 
         SET routine_key = CONCAT('rtk_', LOWER(HEX(RANDOM_BYTES(14))))
         WHERE id = rotina_id;
