@@ -37,20 +37,38 @@ class RotinaBackup extends Model
     }
 
     /**
-     * Lista rotinas de um servidor (compatibilidade)
+     * Lista rotinas de um host
      */
-    public static function byServidor(int $servidorId): array
+    public static function byHost(int $hostId): array
     {
-        return self::where(['servidor_id' => $servidorId], 'nome ASC');
+        return self::where(['host_id' => $hostId], 'nome ASC');
     }
 
     /**
-     * Lista rotinas ativas de um servidor (compatibilidade)
+     * Lista rotinas ativas de um host
      */
-    public static function ativasByServidor(int $servidorId): array
+    public static function ativasByHost(int $hostId): array
     {
-        $sql = "SELECT * FROM rotinas_backup WHERE servidor_id = ? AND ativa = 1 ORDER BY nome ASC";
-        return \App\Database::fetchAll($sql, [$servidorId]);
+        $sql = "SELECT * FROM rotinas_backup WHERE host_id = ? AND ativa = 1 ORDER BY nome ASC";
+        return \App\Database::fetchAll($sql, [$hostId]);
+    }
+
+    /**
+     * Lista rotinas independentes (sem host vinculado)
+     */
+    public static function independentes(int $clienteId): array
+    {
+        $sql = "SELECT * FROM rotinas_backup WHERE cliente_id = ? AND host_id IS NULL ORDER BY nome ASC";
+        return \App\Database::fetchAll($sql, [$clienteId]);
+    }
+
+    /**
+     * Lista rotinas com host vinculado
+     */
+    public static function comHost(int $clienteId): array
+    {
+        $sql = "SELECT * FROM rotinas_backup WHERE cliente_id = ? AND host_id IS NOT NULL ORDER BY nome ASC";
+        return \App\Database::fetchAll($sql, [$clienteId]);
     }
 
     /**
@@ -63,12 +81,12 @@ class RotinaBackup extends Model
     }
 
     /**
-     * Encontra rotina pelo nome e servidor (compatibilidade)
+     * Encontra rotina pelo nome e host
      */
-    public static function findByNomeAndServidor(string $nome, int $servidorId): ?array
+    public static function findByNomeAndHost(string $nome, int $hostId): ?array
     {
-        $sql = "SELECT * FROM rotinas_backup WHERE nome = ? AND servidor_id = ?";
-        return \App\Database::fetch($sql, [$nome, $servidorId]);
+        $sql = "SELECT * FROM rotinas_backup WHERE nome = ? AND host_id = ?";
+        return \App\Database::fetch($sql, [$nome, $hostId]);
     }
 
     /**
@@ -120,23 +138,23 @@ class RotinaBackup extends Model
     /**
      * Encontra ou cria rotina (compatibilidade com API antiga)
      */
-    public static function findOrCreate(int $servidorId, string $nome, array $extraData = []): array
+    public static function findOrCreate(int $hostId, string $nome, array $extraData = []): array
     {
-        $rotina = self::findByNomeAndServidor($nome, $servidorId);
+        $rotina = self::findByNomeAndHost($nome, $hostId);
         
         if ($rotina) {
             return $rotina;
         }
         
-        // Busca cliente_id do servidor
-        $servidor = \App\Models\Servidor::find($servidorId);
-        if (!$servidor) {
-            throw new \Exception("Servidor não encontrado: $servidorId");
+        // Busca cliente_id do host
+        $host = \App\Models\Host::find($hostId);
+        if (!$host) {
+            throw new \Exception("Host não encontrado: $hostId");
         }
         
         $data = array_merge([
-            'cliente_id' => $servidor['cliente_id'],
-            'servidor_id' => $servidorId,
+            'cliente_id' => $host['cliente_id'],
+            'host_id' => $hostId,
             'nome' => $nome,
             'routine_key' => self::generateRoutineKey(),
             'ativa' => 1
@@ -151,11 +169,11 @@ class RotinaBackup extends Model
      */
     public static function allWithDetails(): array
     {
-        $sql = "SELECT r.*, s.nome as servidor_nome, c.nome as cliente_nome, c.identificador as cliente_identificador
+        $sql = "SELECT r.*, h.nome as host_nome, c.nome as cliente_nome, c.identificador as cliente_identificador
                 FROM rotinas_backup r
-                LEFT JOIN servidores s ON r.servidor_id = s.id
-                LEFT JOIN clientes c ON s.cliente_id = c.id
-                ORDER BY c.nome, s.nome, r.nome";
+                INNER JOIN clientes c ON r.cliente_id = c.id
+                LEFT JOIN hosts h ON r.host_id = h.id
+                ORDER BY c.nome, h.nome, r.nome";
         
         return \App\Database::fetchAll($sql);
     }

@@ -2,21 +2,21 @@
 
 ## Visão Geral
 
-Este documento descreve a transformação da arquitetura do Backup WebManager de um sistema baseado em **servidores** para um sistema baseado em **rotinas independentes**.
+Este documento descreve a transformação da arquitetura do Backup WebManager de um sistema baseado em **hosts** para um sistema baseado em **rotinas independentes**.
 
 ## Motivação
 
-### Antes (Sistema Baseado em Servidores)
-- Os backups eram vinculados a servidores específicos
+### Antes (Sistema Baseado em Hosts)
+- Os backups eram vinculados a hosts específicos
 - Cada servidor pertencia a um cliente
-- As rotinas eram subordinadas aos servidores
+- As rotinas eram subordinadas aos hosts
 - Limitação: não era possível ter múltiplas rotinas independentes para o mesmo host
 
 ### Depois (Sistema Baseado em Rotinas)
 - As rotinas são entidades independentes vinculadas diretamente aos clientes
 - Cada rotina possui uma **Routine Key** única para identificação
 - O mesmo host pode ter múltiplas rotinas cadastradas
-- Hosts não precisam ser servidores - podem ser estações, VMs, containers, etc.
+- Hosts não precisam ser hosts - podem ser estações, VMs, containers, etc.
 - Maior flexibilidade e abrangência do sistema
 
 ## Mudanças no Banco de Dados
@@ -29,7 +29,7 @@ Este documento descreve a transformação da arquitetura do Backup WebManager de
 - `host_info` (JSON) - Informações do host (nome, hostname, IP, SO, etc.)
 
 #### Campos Modificados
-- `servidor_id` - Agora é OPCIONAL (NULL permitido)
+- `host_id` - Agora é OPCIONAL (NULL permitido)
   - Mantido para compatibilidade com dados existentes
   - Pode ser usado para vincular rotina a um servidor específico, se desejado
 
@@ -40,17 +40,17 @@ Este documento descreve a transformação da arquitetura do Backup WebManager de
 ### Tabela `execucoes_backup`
 
 #### Campos Modificados
-- `servidor_id` - Agora é OPCIONAL (NULL permitido)
+- `host_id` - Agora é OPCIONAL (NULL permitido)
   - Será NULL para rotinas sem servidor vinculado
   - Informações do host são armazenadas em `detalhes->host_info`
 
 ### Views Criadas
 
 #### `v_rotinas_completas`
-View que combina dados de rotinas, clientes e servidores para facilitar consultas.
+View que combina dados de rotinas, clientes e hosts para facilitar consultas.
 
 #### `v_execucoes_completas`
-View que combina dados de execuções com informações completas de rotinas, clientes e servidores.
+View que combina dados de execuções com informações completas de rotinas, clientes e hosts.
 
 ## Mudanças na API
 
@@ -191,13 +191,13 @@ A migração é **automática** ao executar o script SQL:
 1. Todas as rotinas existentes recebem:
    - `cliente_id` - Extraído do servidor vinculado
    - `routine_key` - Gerada automaticamente (UUID)
-   - `servidor_id` - Mantido para compatibilidade
+   - `host_id` - Mantido para compatibilidade
 
 2. Nenhuma execução existente é perdida
 
 3. Compatibilidade total mantida:
    - API antiga continua funcionando
-   - Servidores existentes continuam válidos
+   - Hosts existentes continuam válidos
    - Agentes antigos continuam funcionando
 
 ## Compatibilidade Retroativa
@@ -205,11 +205,11 @@ A migração é **automática** ao executar o script SQL:
 ✅ **API antiga (servidor + rotina)** - Totalmente suportada  
 ✅ **Agentes antigos** - Continuam funcionando normalmente  
 ✅ **Dados existentes** - Migrados automaticamente  
-✅ **Servidores** - Continuam sendo suportados como opção  
+✅ **Hosts** - Continuam sendo suportados como opção  
 
 ## Benefícios da Nova Arquitetura
 
-1. **Flexibilidade**: Rotinas independentes de servidores
+1. **Flexibilidade**: Rotinas independentes de hosts
 2. **Escalabilidade**: Múltiplas rotinas por host
 3. **Simplicidade**: Configuração via routine_key única
 4. **Abrangência**: Suporte a qualquer tipo de host
@@ -303,8 +303,8 @@ A: Sim! Todos os dados existentes são preservados e migrados automaticamente.
 - Documentação completa da transformação
 
 **Changed:**
-- `servidor_id` agora é opcional em rotinas
-- `servidor_id` agora é opcional em execuções
+- `host_id` agora é opcional em rotinas
+- `host_id` agora é opcional em execuções
 - API aceita `routine_key` como identificador principal
 - Configuração do agente suporta múltiplas rotinas
 
@@ -312,7 +312,7 @@ A: Sim! Todos os dados existentes são preservados e migrados automaticamente.
 - Compatibilidade total com formato antigo
 - Todos os dados existentes preservados
 - Agentes antigos continuam funcionando
-- Servidores continuam sendo suportados
+- Hosts continuam sendo suportados
 
 ---
 

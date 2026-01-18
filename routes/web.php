@@ -7,6 +7,7 @@ use App\Router;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\ClienteController;
+use App\Controllers\HostController;
 use App\Controllers\RotinaBackupController;
 use App\Controllers\UsuarioController;
 use App\Controllers\BackupController;
@@ -49,6 +50,16 @@ Router::group(['middleware' => ['auth', 'csrf']], function () {
     Router::post('/clientes/{id}/delete', [ClienteController::class, 'destroy'], ['admin']);
     Router::post('/clientes/{id}/regenerar-api-key', [ClienteController::class, 'regenerateApiKey'], ['admin']);
     
+    // Hosts
+    Router::get('/clientes/{clienteId}/hosts', [HostController::class, 'index']);
+    Router::get('/clientes/{clienteId}/hosts/criar', [HostController::class, 'create'], ['operator']);
+    Router::post('/clientes/{clienteId}/hosts', [HostController::class, 'store'], ['operator']);
+    Router::get('/clientes/{clienteId}/hosts/{id}', [HostController::class, 'show']);
+    Router::get('/clientes/{clienteId}/hosts/{id}/editar', [HostController::class, 'edit'], ['operator']);
+    Router::post('/clientes/{clienteId}/hosts/{id}', [HostController::class, 'update'], ['operator']);
+    Router::post('/clientes/{clienteId}/hosts/{id}/delete', [HostController::class, 'destroy'], ['admin']);
+    Router::post('/clientes/{clienteId}/hosts/{id}/toggle-status', [HostController::class, 'toggleStatus'], ['operator']);
+    
     // Rotinas de Backup
     Router::get('/clientes/{clienteId}/rotinas', [RotinaBackupController::class, 'index']);
     Router::get('/clientes/{clienteId}/rotinas/criar', [RotinaBackupController::class, 'create'], ['operator']);
@@ -69,7 +80,7 @@ Router::group(['middleware' => ['auth', 'csrf']], function () {
     // Backups
     Router::get('/backups', [BackupController::class, 'index']);
     Router::get('/backups/{id}', [BackupController::class, 'show']);
-    Router::get('/backups/servidores/{clienteId}', [BackupController::class, 'servidoresByCliente']);
+    Router::get('/backups/hosts/{clienteId}', [BackupController::class, 'hostsByCliente']);
     
     // Relatórios
     Router::get('/relatorios', [RelatorioController::class, 'index']);

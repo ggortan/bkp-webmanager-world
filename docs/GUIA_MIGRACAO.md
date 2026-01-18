@@ -26,27 +26,41 @@ Este guia fornece instruções passo a passo para migrar do sistema antigo (base
 mysqldump -u root -p backup_webmanager > backup_webmanager_antes_migracao_$(date +%Y%m%d).sql
 ```
 
-## Passo 2: Executar Migração do Banco de Dados
+## Passo 2: Executar Migrações do Banco de Dados
+
+### Migração 002: Sistema Baseado em Rotinas
 
 ```bash
-# Execute o script de migração
+# Execute o script de migração de rotinas
 mysql -u root -p backup_webmanager < database/migrations/002_transform_to_routine_based.sql
 ```
 
-### O que a migração faz:
+### Migração 003: Renomeação de Servidores para Hosts
 
-✅ Adiciona novos campos à tabela `rotinas_backup`:
-- `cliente_id` - Vínculo direto com cliente
-- `routine_key` - Chave única para identificação
-- `host_info` - Informações do host (JSON)
+```bash
+# Execute o script de migração de nomenclatura
+mysql -u root -p backup_webmanager < database/migrations/003_rename_servidores_to_hosts.sql
+```
 
-✅ Torna `servidor_id` opcional em `rotinas_backup` e `execucoes_backup`
+### O que as migrações fazem:
 
-✅ Gera `routine_key` automaticamente para todas as rotinas existentes
+**Migração 002** ✅:
+- Adiciona novos campos à tabela `rotinas_backup`:
+  - `cliente_id` - Vínculo direto com cliente
+  - `routine_key` - Chave única para identificação
+  - `host_info` - Informações do host (JSON)
+- Torna `servidor_id` opcional em `rotinas_backup` e `execucoes_backup`
+- Gera `routine_key` automaticamente para todas as rotinas existentes
+- Preenche `cliente_id` com base no servidor vinculado
+- Cria views `v_rotinas_completas` e `v_execucoes_completas`
 
-✅ Preenche `cliente_id` com base no servidor vinculado
-
-✅ Cria views `v_rotinas_completas` e `v_execucoes_completas`
+**Migração 003** ✅:
+- Renomeia tabela `servidores` para `hosts`
+- Renomeia coluna `servidor_id` para `host_id` em todas as tabelas
+- Atualiza índices e foreign keys
+- Recria views com novos nomes
+- Adiciona novos campos: `descricao` e `tipo`
+- **Mantém todos os dados existentes intactos**
 
 ✅ **Preserva todos os dados existentes - ZERO perda de dados**
 

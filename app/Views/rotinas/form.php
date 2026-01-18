@@ -70,17 +70,17 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="servidor_id" class="form-label">Servidor (Opcional)</label>
-                        <select class="form-select" id="servidor_id" name="servidor_id">
+                        <label for="host_id" class="form-label">Host (Opcional)</label>
+                        <select class="form-select" id="host_id" name="host_id">
                             <option value="">Nenhum (rotina independente)</option>
-                            <?php foreach ($servidores as $servidor): ?>
-                                <option value="<?= $servidor['id'] ?>" 
-                                        <?= ($rotina['servidor_id'] ?? '') == $servidor['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($servidor['nome']) ?>
+                            <?php foreach ($hosts as $host): ?>
+                                <option value="<?= $host['id'] ?>" 
+                                        <?= ($rotina['host_id'] ?? '') == $host['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($host['nome']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <small class="form-text text-muted">Deixe vazio se a rotina não está vinculada a um servidor específico</small>
+                        <small class="form-text text-muted">Deixe vazio se a rotina não está vinculada a um host específico</small>
                     </div>
                     
                     <hr class="my-4">
@@ -197,10 +197,10 @@
                 
                 <h6>Nova Arquitetura</h6>
                 <p class="small text-muted">
-                    As rotinas agora são independentes de servidores. Você pode:
+                    As rotinas agora são independentes de hostes. Você pode:
                 </p>
                 <ul class="small text-muted">
-                    <li>Criar rotinas sem vincular a um servidor</li>
+                    <li>Criar rotinas sem vincular a um host</li>
                     <li>Configurar múltiplas rotinas para o mesmo host</li>
                     <li>Enviar dados de qualquer host usando a Routine Key</li>
                 </ul>

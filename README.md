@@ -39,15 +39,22 @@ O **Backup WebManager** é uma aplicação web corporativa que centraliza o moni
 ### Gestão de Clientes
 - Cadastro completo de clientes
 - API Key individual por cliente
-- Servidores vinculados automaticamente (compatibilidade)
+- Hosts organizados por cliente
 - Configuração de relatórios
+
+### Gestão de Hosts ⭐ NOVO
+- CRUD completo de hosts (anteriormente "servidores")
+- Vinculação opcional de rotinas a hosts
+- Informações detalhadas: nome, hostname, IP, SO, tipo
+- Estatísticas de execuções por host
+- Organização flexível para diferentes ambientes
 
 ### Gestão de Rotinas de Backup ⭐ NOVO
 - Rotinas independentes vinculadas diretamente aos clientes
 - Routine Key única para cada rotina
 - Suporte a múltiplas rotinas por host
 - Informações do host (nome, IP, SO) armazenadas
-- Vincular ou não a servidores (opcional)
+- Vincular ou não a hosts (opcional)
 - Gerenciamento completo via interface web
 
 ### Histórico de Backups
@@ -70,8 +77,7 @@ O **Backup WebManager** é uma aplicação web corporativa que centraliza o moni
 - Endpoint seguro para recebimento de dados
 - Autenticação via API Key
 - Validação completa dos dados
-- **Novo formato baseado em Routine Key** ⭐
-- Compatibilidade com formato antigo mantida
+- **Formato baseado em Routine Key** ⭐
 - Endpoint para listar rotinas do cliente
 
 ## 🛠 Stack Tecnológica

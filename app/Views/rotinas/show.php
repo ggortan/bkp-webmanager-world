@@ -57,11 +57,11 @@
                             <?php endif; ?>
                         </td>
                     </tr>
-                    <?php if ($servidor): ?>
+                    <?php if ($host): ?>
                     <tr>
-                        <th class="ps-0">Servidor Vinculado</th>
+                        <th class="ps-0">Host Vinculado</th>
                         <td class="text-end">
-                            <?= htmlspecialchars($servidor['nome']) ?>
+                            <?= htmlspecialchars($host['nome']) ?>
                         </td>
                     </tr>
                     <?php endif; ?>

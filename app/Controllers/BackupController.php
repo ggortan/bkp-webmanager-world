@@ -7,7 +7,7 @@ namespace App\Controllers;
 
 use App\Models\ExecucaoBackup;
 use App\Models\Cliente;
-use App\Models\Servidor;
+use App\Models\Host;
 use App\Services\AuthService;
 use App\Services\BackupService;
 
@@ -30,7 +30,7 @@ class BackupController extends Controller
     {
         $filters = [
             'cliente_id' => $_GET['cliente_id'] ?? null,
-            'servidor_id' => $_GET['servidor_id'] ?? null,
+            'host_id' => $_GET['host_id'] ?? null,
             'status' => $_GET['status'] ?? null,
             'data_inicio' => $_GET['data_inicio'] ?? null,
             'data_fim' => $_GET['data_fim'] ?? null
@@ -59,11 +59,11 @@ class BackupController extends Controller
     public function show(int $id): void
     {
         $sql = "SELECT e.*, r.nome as rotina_nome, r.tipo as rotina_tipo,
-                       s.nome as servidor_nome, s.hostname,
+                       h.nome as host_nome, h.hostname,
                        c.nome as cliente_nome, c.identificador as cliente_identificador
                 FROM execucoes_backup e
                 LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
-                LEFT JOIN servidores s ON e.servidor_id = s.id
+                LEFT JOIN hosts h ON e.host_id = h.id
                 LEFT JOIN clientes c ON e.cliente_id = c.id
                 WHERE e.id = ?";
         
@@ -87,15 +87,15 @@ class BackupController extends Controller
     }
 
     /**
-     * Obtém servidores de um cliente (AJAX)
+     * Obtém hosts de um cliente (AJAX)
      */
-    public function servidoresByCliente(int $clienteId): void
+    public function hostsByCliente(int $clienteId): void
     {
-        $servidores = Servidor::ativosByCliente($clienteId);
+        $hosts = Host::ativosByCliente($clienteId);
         
         $this->json([
             'success' => true,
-            'servidores' => $servidores
+            'hosts' => $hosts
         ]);
     }
 }

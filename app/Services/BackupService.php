@@ -8,7 +8,7 @@
 namespace App\Services;
 
 use App\Models\Cliente;
-use App\Models\Servidor;
+use App\Models\Host;
 use App\Models\RotinaBackup;
 use App\Models\ExecucaoBackup;
 use App\Database;
@@ -27,49 +27,34 @@ class BackupService
         
         try {
             $rotina = null;
-            $servidor = null;
+            $host = null;
             
-            // Novo formato: usando routine_key
-            if (!empty($data['routine_key'])) {
-                $rotina = RotinaBackup::findByRoutineKey($data['routine_key']);
-                
-                if (!$rotina) {
-                    throw new \Exception("Rotina não encontrada com a routine_key fornecida");
-                }
-                
-                // Verifica se a rotina pertence ao cliente autenticado
-                if ($rotina['cliente_id'] != $cliente['id']) {
-                    throw new \Exception("Rotina não pertence ao cliente autenticado");
-                }
-                
-                // Atualiza host_info se fornecido
-                if (!empty($data['host_info'])) {
-                    $hostInfo = is_array($data['host_info']) ? json_encode($data['host_info']) : $data['host_info'];
-                    RotinaBackup::update($rotina['id'], ['host_info' => $hostInfo]);
-                    $rotina['host_info'] = $hostInfo;
-                }
-                
-                // Se a rotina tem servidor vinculado, usa ele
-                if ($rotina['servidor_id']) {
-                    $servidor = Servidor::find($rotina['servidor_id']);
-                }
+            // Verifica se routine_key foi fornecido
+            if (empty($data['routine_key'])) {
+                throw new \Exception("O campo 'routine_key' é obrigatório");
             }
-            // Formato antigo (compatibilidade): usando servidor + rotina
-            elseif (!empty($data['servidor']) && !empty($data['rotina'])) {
-                // Encontra ou cria o servidor
-                $servidor = Servidor::findOrCreate($cliente['id'], $data['servidor'], [
-                    'hostname' => $data['hostname'] ?? null,
-                    'ip' => $data['ip'] ?? null,
-                    'sistema_operacional' => $data['sistema_operacional'] ?? null
-                ]);
-                
-                // Encontra ou cria a rotina (compatibilidade)
-                $rotina = RotinaBackup::findOrCreate($servidor['id'], $data['rotina'], [
-                    'tipo' => $data['tipo_backup'] ?? null,
-                    'destino' => $data['destino'] ?? null
-                ]);
-            } else {
-                throw new \Exception("Informe 'routine_key' ou 'servidor' + 'rotina'");
+            
+            $rotina = RotinaBackup::findByRoutineKey($data['routine_key']);
+            
+            if (!$rotina) {
+                throw new \Exception("Rotina não encontrada com a routine_key fornecida");
+            }
+            
+            // Verifica se a rotina pertence ao cliente autenticado
+            if ($rotina['cliente_id'] != $cliente['id']) {
+                throw new \Exception("Rotina não pertence ao cliente autenticado");
+            }
+            
+            // Atualiza host_info se fornecido
+            if (!empty($data['host_info'])) {
+                $hostInfo = is_array($data['host_info']) ? json_encode($data['host_info']) : $data['host_info'];
+                RotinaBackup::update($rotina['id'], ['host_info' => $hostInfo]);
+                $rotina['host_info'] = $hostInfo;
+            }
+            
+            // Se a rotina tem host vinculado, usa ele
+            if ($rotina['host_id']) {
+                $host = Host::find($rotina['host_id']);
             }
             
             // Prepara host_info para armazenar na execução (se disponível)
@@ -90,7 +75,7 @@ class BackupService
             $execucaoData = [
                 'rotina_id' => $rotina['id'],
                 'cliente_id' => $cliente['id'],
-                'servidor_id' => $servidor ? $servidor['id'] : null,
+                'servidor_id' => $host ? $host['id'] : null,
                 'data_inicio' => $data['data_inicio'],
                 'data_fim' => $data['data_fim'] ?? null,
                 'status' => $data['status'],
@@ -110,8 +95,8 @@ class BackupService
                 'cliente' => $cliente['identificador'],
                 'rotina_id' => $rotina['id'],
                 'rotina_nome' => $rotina['nome'],
-                'routine_key' => $rotina['routine_key'] ?? null,
-                'servidor' => $servidor ? $servidor['nome'] : ($data['servidor'] ?? 'N/A'),
+                'routine_key' => $rotina['routine_key'],
+                'host' => $host ? $host['nome'] : 'N/A',
                 'status' => $data['status'],
                 'execucao_id' => $execucaoId
             ]);
@@ -159,16 +144,13 @@ class BackupService
     {
         $errors = [];
         
-        // Verifica se é novo formato (routine_key) ou formato antigo (servidor + rotina)
-        $isNewFormat = !empty($data['routine_key']);
-        $isOldFormat = !empty($data['servidor']) && !empty($data['rotina']);
-        
-        if (!$isNewFormat && !$isOldFormat) {
-            $errors['format'] = "Informe 'routine_key' (novo formato) ou 'servidor' + 'rotina' (formato antigo)";
+        // Verifica se routine_key foi fornecido
+        if (empty($data['routine_key'])) {
+            $errors['routine_key'] = "O campo 'routine_key' é obrigatório";
         }
         
-        // Valida routine_key se fornecido
-        if ($isNewFormat && strlen($data['routine_key']) < self::ROUTINE_KEY_MIN_LENGTH_TOTAL) {
+        // Valida routine_key
+        if (!empty($data['routine_key']) && strlen($data['routine_key']) < self::ROUTINE_KEY_MIN_LENGTH_TOTAL) {
             $errors['routine_key'] = "routine_key inválido (muito curto)";
         }
         
