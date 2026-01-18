@@ -116,7 +116,7 @@ class ApiBackupController extends Controller
         
         // Tenta verificar banco de dados
         try {
-            $pdo = \App\Database::getConnection();
+            $pdo = \App\Database::getInstance();
             $stmt = $pdo->query('SELECT 1');
             $response['database'] = 'connected';
         } catch (\Exception $e) {
