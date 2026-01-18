@@ -161,10 +161,10 @@ class BackupService
         
         // Verifica se é novo formato (routine_key) ou formato antigo (servidor + rotina)
         $isNewFormat = !empty($data['routine_key']);
-        $isOldFormat = !empty($data['host']) && !empty($data['rotina']);
+        $isOldFormat = !empty($data['servidor']) && !empty($data['rotina']);
         
         if (!$isNewFormat && !$isOldFormat) {
-            $errors['format'] = "Informe 'routine_key' (novo formato) ou 'host' + 'rotina' (formato antigo)";
+            $errors['format'] = "Informe 'routine_key' (novo formato) ou 'servidor' + 'rotina' (formato antigo)";
         }
         
         // Valida routine_key se fornecido

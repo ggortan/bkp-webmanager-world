@@ -35,10 +35,10 @@ class ExecucaoBackup extends Model
      */
     public static function byCliente(int $clienteId, int $limit = 100): array
     {
-        $sql = "SELECT e.*, r.nome as rotina_nome, s.nome as host_nome
+        $sql = "SELECT e.*, r.nome as rotina_nome, h.nome as host_nome
                 FROM execucoes_backup e
                 LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
-                LEFT JOIN hosts h ON e.host_id = s.id
+                LEFT JOIN hosts h ON e.host_id = h.id
                 WHERE e.cliente_id = ?
                 ORDER BY e.data_inicio DESC
                 LIMIT ?";
@@ -98,11 +98,11 @@ class ExecucaoBackup extends Model
      */
     public static function getRecent(int $limit = 20): array
     {
-        $sql = "SELECT e.*, r.nome as rotina_nome, s.nome as host_nome, 
+        $sql = "SELECT e.*, r.nome as rotina_nome, h.nome as host_nome, 
                        c.nome as cliente_nome, c.identificador as cliente_identificador
                 FROM execucoes_backup e
                 LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
-                LEFT JOIN hosts h ON e.host_id = s.id
+                LEFT JOIN hosts h ON e.host_id = h.id
                 LEFT JOIN clientes c ON e.cliente_id = c.id
                 ORDER BY e.data_inicio DESC
                 LIMIT ?";
@@ -169,11 +169,11 @@ class ExecucaoBackup extends Model
         $total = \App\Database::fetch($countSql, $params)['total'];
         
         // Dados
-        $sql = "SELECT e.*, r.nome as rotina_nome, s.nome as host_nome, 
+        $sql = "SELECT e.*, r.nome as rotina_nome, h.nome as host_nome, 
                        c.nome as cliente_nome, c.identificador as cliente_identificador
                 FROM execucoes_backup e
                 LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
-                LEFT JOIN hosts h ON e.host_id = s.id
+                LEFT JOIN hosts h ON e.host_id = h.id
                 LEFT JOIN clientes c ON e.cliente_id = c.id
                 WHERE {$whereStr}
                 ORDER BY e.data_inicio DESC
