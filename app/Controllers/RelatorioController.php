@@ -30,8 +30,50 @@ class RelatorioController extends Controller
      */
     public function index(): void
     {
+        // Estatísticas gerais
+        $stats = ExecucaoBackup::getStats(30);
+        
+        // Contagem de hosts online
+        $sqlHosts = "SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN online_status = 'online' THEN 1 ELSE 0 END) as online
+                     FROM hosts WHERE ativo = 1";
+        $hostStats = \App\Database::fetch($sqlHosts);
+        $stats['total_hosts'] = $hostStats['total'] ?? 0;
+        $stats['hosts_online'] = $hostStats['online'] ?? 0;
+        
+        // Busca todos os hosts com telemetria
+        $sqlAllHosts = "SELECT h.*, c.nome as cliente_nome 
+                        FROM hosts h 
+                        INNER JOIN clientes c ON h.cliente_id = c.id 
+                        WHERE h.ativo = 1 
+                        ORDER BY h.online_status DESC, h.last_seen_at DESC";
+        $hosts = \App\Database::fetchAll($sqlAllHosts);
+        
+        // Busca rotinas com falhas recentes (últimos 7 dias)
+        $sqlFalhas = "SELECT r.*, 
+                             c.nome as cliente_nome, 
+                             h.nome as host_nome,
+                             (SELECT MAX(e.data_inicio) FROM execucoes_backup e 
+                              WHERE e.rotina_id = r.id AND e.status = 'falha') as ultima_falha,
+                             (SELECT COUNT(*) FROM execucoes_backup e 
+                              WHERE e.rotina_id = r.id 
+                              AND e.status = 'falha' 
+                              AND e.data_inicio >= DATE_SUB(NOW(), INTERVAL 7 DAY)) as total_falhas
+                      FROM rotinas_backup r
+                      INNER JOIN clientes c ON r.cliente_id = c.id
+                      LEFT JOIN hosts h ON r.host_id = h.id
+                      WHERE r.ativa = 1
+                      HAVING total_falhas > 0
+                      ORDER BY total_falhas DESC, ultima_falha DESC
+                      LIMIT 20";
+        $rotinasFalha = \App\Database::fetchAll($sqlFalhas);
+        
         $this->data['title'] = 'Relatórios';
         $this->data['clientes'] = Cliente::forSelect();
+        $this->data['stats'] = $stats;
+        $this->data['hosts'] = $hosts;
+        $this->data['rotinas_falha'] = $rotinasFalha;
         $this->data['flash'] = $this->getFlash();
         
         $this->render('relatorios/index', $this->data);

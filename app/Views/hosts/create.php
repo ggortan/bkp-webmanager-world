@@ -10,6 +10,9 @@
         </nav>
         <h4 class="mt-2 mb-0">Novo Host</h4>
     </div>
+    <a href="<?= path('/clientes/' . $cliente['id'] . '/hosts') ?>" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
 </div>
 
 <div class="card">

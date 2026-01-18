@@ -251,8 +251,31 @@ INSERT INTO configuracoes (chave, valor, tipo, descricao) VALUES
 ('schema_version', '2.0.0', 'string', 'Versão do schema do banco de dados'),
 ('relatorios_email_ativo', 'true', 'boolean', 'Ativar/desativar envio de relatórios por e-mail'),
 ('dias_retencao_logs', '90', 'integer', 'Quantidade de dias para manter logs no sistema'),
+('dias_retencao_telemetria', '0', 'integer', 'Dias para reter histórico de telemetria. 0 = nunca apagar'),
 ('alerta_backups_falhos', 'true', 'boolean', 'Alertar quando houver backups com falha'),
 ('timezone', 'America/Sao_Paulo', 'string', 'Fuso horário do sistema');
+
+-- ============================================
+-- Tabela: telemetria_historico
+-- ============================================
+CREATE TABLE IF NOT EXISTS telemetria_historico (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    host_id INT UNSIGNED NOT NULL,
+    cliente_id INT UNSIGNED NOT NULL,
+    cpu_percent DECIMAL(5,2) NULL,
+    memory_percent DECIMAL(5,2) NULL,
+    disk_percent DECIMAL(5,2) NULL,
+    uptime_seconds BIGINT UNSIGNED NULL,
+    data_completa JSON NULL COMMENT 'Dados completos da telemetria',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_host (host_id),
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_created_at (created_at),
+    INDEX idx_host_created (host_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
 -- Views para consultas facilitadas

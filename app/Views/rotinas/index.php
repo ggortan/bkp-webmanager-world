@@ -9,11 +9,16 @@
         </nav>
         <h4 class="mt-2 mb-0">Rotinas de Backup</h4>
     </div>
-    <?php if (in_array($user['role'] ?? '', ['admin', 'operator'])): ?>
-    <a href="<?= path('/clientes/' . $cliente['id'] . '/rotinas/criar') ?>" class="btn btn-primary">
-        <i class="bi bi-plus-circle me-1"></i>Nova Rotina
-    </a>
-    <?php endif; ?>
+    <div class="btn-group">
+        <a href="<?= path('/clientes/' . $cliente['id']) ?>" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+        <?php if (in_array($user['role'] ?? '', ['admin', 'operator'])): ?>
+        <a href="<?= path('/clientes/' . $cliente['id'] . '/rotinas/criar') ?>" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Nova Rotina
+        </a>
+        <?php endif; ?>
+    </div>
 </div>
 
 <div class="card">

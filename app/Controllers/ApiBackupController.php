@@ -295,6 +295,41 @@ class ApiBackupController extends Controller
                 \App\Models\Host::update($host['id'], $updateData);
             }
             
+            // Salva histórico de telemetria se métricas foram fornecidas
+            if (!empty($data['metrics'])) {
+                $metrics = $data['metrics'];
+                
+                $historicoData = [
+                    'host_id' => $host['id'],
+                    'cliente_id' => $cliente['id'],
+                    'cpu_percent' => $metrics['cpu_percent'] ?? 0,
+                    'memory_percent' => $metrics['memory_percent'] ?? 0,
+                    'disk_percent' => $metrics['disk_percent'] ?? 0,
+                    'uptime_seconds' => $metrics['uptime_seconds'] ?? null,
+                    'data_completa' => json_encode($metrics)
+                ];
+                
+                $sql = "INSERT INTO telemetria_historico 
+                        (host_id, cliente_id, cpu_percent, memory_percent, disk_percent, uptime_seconds, data_completa) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)";
+                
+                \App\Database::execute($sql, [
+                    $historicoData['host_id'],
+                    $historicoData['cliente_id'],
+                    $historicoData['cpu_percent'],
+                    $historicoData['memory_percent'],
+                    $historicoData['disk_percent'],
+                    $historicoData['uptime_seconds'],
+                    $historicoData['data_completa']
+                ]);
+                
+                // Aplica retenção de dados (se configurado)
+                $this->aplicarRetencaoTelemetria($host['id']);
+            }
+            
+            // Auto-vincula rotinas sem host a este host (baseado no host_info)
+            $this->autoVincularRotinas($host, $cliente['id']);
+            
             $this->json([
                 'success' => true,
                 'message' => 'Telemetria recebida',
@@ -315,6 +350,77 @@ class ApiBackupController extends Controller
                 'error' => 'Erro ao processar telemetria',
                 'status' => 500
             ], 500);
+        }
+    }
+    
+    /**
+     * Aplica retenção de telemetria para um host
+     */
+    private function aplicarRetencaoTelemetria(int $hostId): void
+    {
+        try {
+            $diasRetencao = (int) (\App\Models\Configuracao::get('dias_retencao_telemetria') ?? 0);
+            
+            // Se retenção é 0, não deleta nada (manter sempre)
+            if ($diasRetencao <= 0) {
+                return;
+            }
+            
+            $dataLimite = date('Y-m-d H:i:s', strtotime("-{$diasRetencao} days"));
+            
+            $sql = "DELETE FROM telemetria_historico WHERE host_id = ? AND created_at < ?";
+            \App\Database::execute($sql, [$hostId, $dataLimite]);
+            
+        } catch (\Exception $e) {
+            LogService::warning('api', 'Falha ao aplicar retenção de telemetria', [
+                'host_id' => $hostId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Auto-vincula rotinas sem host ao host baseado no host_info
+     */
+    private function autoVincularRotinas(array $host, int $clienteId): void
+    {
+        try {
+            // Busca rotinas do cliente que não têm host vinculado mas têm host_info
+            $sql = "SELECT * FROM rotinas_backup 
+                    WHERE cliente_id = ? 
+                    AND host_id IS NULL 
+                    AND host_info IS NOT NULL 
+                    AND host_info != ''";
+            
+            $rotinasSemHost = \App\Database::fetchAll($sql, [$clienteId]);
+            
+            foreach ($rotinasSemHost as $rotina) {
+                $hostInfo = json_decode($rotina['host_info'], true);
+                
+                if (!$hostInfo) {
+                    continue;
+                }
+                
+                // Verifica se o nome do host no host_info corresponde ao host atual
+                $hostNome = $hostInfo['name'] ?? $hostInfo['nome'] ?? null;
+                
+                if ($hostNome && strtolower($hostNome) === strtolower($host['nome'])) {
+                    // Vincula a rotina ao host
+                    \App\Models\RotinaBackup::update($rotina['id'], ['host_id' => $host['id']]);
+                    
+                    LogService::api('Rotina auto-vinculada ao host via telemetria', [
+                        'rotina_id' => $rotina['id'],
+                        'rotina_nome' => $rotina['nome'],
+                        'host_id' => $host['id'],
+                        'host_nome' => $host['nome']
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            LogService::warning('api', 'Falha ao auto-vincular rotinas', [
+                'host_id' => $host['id'],
+                'error' => $e->getMessage()
+            ]);
         }
     }
 

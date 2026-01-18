@@ -18,6 +18,12 @@
         </h4>
     </div>
     <div class="btn-group">
+        <a href="<?= path('/clientes/' . $cliente['id'] . '/hosts') ?>" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+        <a href="<?= path('/clientes/' . $cliente['id'] . '/hosts/' . $host['id'] . '/telemetria') ?>" class="btn btn-outline-info">
+            <i class="bi bi-broadcast me-1"></i>Telemetria
+        </a>
         <?php if (in_array($user['role'] ?? '', ['admin', 'operator'])): ?>
         <a href="<?= path('/clientes/' . $cliente['id'] . '/hosts/' . $host['id'] . '/editar') ?>" class="btn btn-outline-primary">
             <i class="bi bi-pencil me-1"></i>Editar

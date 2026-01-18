@@ -362,4 +362,68 @@ class HostController extends Controller
         $this->flash('success', 'Status do host alterado com sucesso');
         $this->redirect('/clientes/' . $clienteId . '/hosts');
     }
+
+    /**
+     * Exibe tela de telemetria do host
+     * GET /clientes/{clienteId}/hosts/{id}/telemetria
+     */
+    public function telemetry(int $clienteId, int $id): void
+    {
+        $cliente = Cliente::find($clienteId);
+        
+        if (!$cliente) {
+            $this->flash('error', 'Cliente não encontrado');
+            $this->redirect('/clientes');
+            return;
+        }
+        
+        $host = Host::find($id);
+        
+        if (!$host || $host['cliente_id'] != $clienteId) {
+            $this->flash('error', 'Host não encontrado');
+            $this->redirect('/clientes/' . $clienteId . '/hosts');
+            return;
+        }
+        
+        // Buscar histórico de telemetria
+        $sql = "SELECT * FROM telemetria_historico 
+                WHERE host_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT 100";
+        $historico = \App\Database::fetchAll($sql, [$id]);
+        
+        // Calcular estatísticas de telemetria
+        $stats = [
+            'total_registros' => count($historico),
+            'media_cpu' => 0,
+            'media_memoria' => 0,
+            'media_disco' => 0,
+            'max_cpu' => 0,
+            'max_memoria' => 0,
+            'max_disco' => 0,
+        ];
+        
+        if (!empty($historico)) {
+            $stats['media_cpu'] = round(array_sum(array_column($historico, 'cpu_percent')) / count($historico), 2);
+            $stats['media_memoria'] = round(array_sum(array_column($historico, 'memory_percent')) / count($historico), 2);
+            $stats['media_disco'] = round(array_sum(array_column($historico, 'disk_percent')) / count($historico), 2);
+            $stats['max_cpu'] = max(array_column($historico, 'cpu_percent'));
+            $stats['max_memoria'] = max(array_column($historico, 'memory_percent'));
+            $stats['max_disco'] = max(array_column($historico, 'disk_percent'));
+        }
+        
+        // Buscar configuração de retenção
+        $retencaoConfig = \App\Models\Configuracao::get('dias_retencao_telemetria');
+        $diasRetencao = (int) ($retencaoConfig ?? 0);
+        
+        $this->data['title'] = 'Telemetria - ' . $host['nome'];
+        $this->data['cliente'] = $cliente;
+        $this->data['host'] = $host;
+        $this->data['historico'] = $historico;
+        $this->data['stats'] = $stats;
+        $this->data['dias_retencao'] = $diasRetencao;
+        $this->data['flash'] = $this->getFlash();
+        
+        $this->render('hosts/telemetry', $this->data);
+    }
 }

@@ -17,10 +17,17 @@
     </div>
     <?php if (in_array($user['role'] ?? '', ['admin', 'operator'])): ?>
     <div class="btn-group">
+        <a href="<?= path('/clientes/' . $cliente['id'] . '/rotinas') ?>" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
         <a href="<?= path('/clientes/' . $cliente['id'] . '/rotinas/' . $rotina['id'] . '/editar') ?>" class="btn btn-outline-primary">
             <i class="bi bi-pencil me-1"></i>Editar
         </a>
     </div>
+    <?php else: ?>
+    <a href="<?= path('/clientes/' . $cliente['id'] . '/rotinas') ?>" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
     <?php endif; ?>
 </div>
 

@@ -50,9 +50,18 @@ class ClienteController extends Controller
         
         $hosts = Host::byCliente($id);
         
+        // Buscar rotinas com nome do host
+        $sql = "SELECT r.*, h.nome as host_nome 
+                FROM rotinas_backup r 
+                LEFT JOIN hosts h ON r.host_id = h.id 
+                WHERE r.cliente_id = ? 
+                ORDER BY r.nome ASC";
+        $rotinas = \App\Database::fetchAll($sql, [$id]);
+        
         $this->data['title'] = $cliente['nome'];
         $this->data['cliente'] = $cliente;
         $this->data['hosts'] = $hosts;
+        $this->data['rotinas'] = $rotinas;
         $this->data['flash'] = $this->getFlash();
         
         $this->render('clientes/show', $this->data);

@@ -55,6 +55,7 @@ Router::group(['middleware' => ['auth', 'csrf']], function () {
     Router::get('/clientes/{clienteId}/hosts/criar', [HostController::class, 'create'], ['operator']);
     Router::post('/clientes/{clienteId}/hosts', [HostController::class, 'store'], ['operator']);
     Router::get('/clientes/{clienteId}/hosts/{id}', [HostController::class, 'show']);
+    Router::get('/clientes/{clienteId}/hosts/{id}/telemetria', [HostController::class, 'telemetry']);
     Router::get('/clientes/{clienteId}/hosts/{id}/editar', [HostController::class, 'edit'], ['operator']);
     Router::post('/clientes/{clienteId}/hosts/{id}', [HostController::class, 'update'], ['operator']);
     Router::post('/clientes/{clienteId}/hosts/{id}/delete', [HostController::class, 'destroy'], ['admin']);

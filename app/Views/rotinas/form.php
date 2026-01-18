@@ -10,6 +10,9 @@
         </nav>
         <h4 class="mt-2 mb-0"><?= $rotina ? 'Editar Rotina' : 'Nova Rotina de Backup' ?></h4>
     </div>
+    <a href="<?= $rotina ? path('/clientes/' . $cliente['id'] . '/rotinas/' . $rotina['id']) : path('/clientes/' . $cliente['id'] . '/rotinas') ?>" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
 </div>
 
 <div class="row">

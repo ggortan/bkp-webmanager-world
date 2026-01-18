@@ -10,6 +10,9 @@
         </nav>
         <h4 class="mt-2 mb-0">Editar Host: <?= htmlspecialchars($host['nome']) ?></h4>
     </div>
+    <a href="<?= path('/clientes/' . $cliente['id'] . '/hosts/' . $host['id']) ?>" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
 </div>
 
 <div class="card">
