@@ -55,21 +55,21 @@
         <div class="stat-card success">
             <i class="bi bi-check-circle stat-icon"></i>
             <div class="stat-value"><?= $host['stats']['sucesso'] ?? 0 ?></div>
-            <div class="stat-label">Sucesso (7 dias)</div>
+            <div class="stat-label">Rotinas com Sucesso</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card danger">
             <i class="bi bi-x-circle stat-icon"></i>
             <div class="stat-value"><?= $host['stats']['falha'] ?? 0 ?></div>
-            <div class="stat-label">Falhas (7 dias)</div>
+            <div class="stat-label">Rotinas com Falha</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card warning">
-            <i class="bi bi-clock-history stat-icon"></i>
-            <div class="stat-value"><?= $host['stats']['total'] ?? 0 ?></div>
-            <div class="stat-label">Total (7 dias)</div>
+            <i class="bi bi-exclamation-triangle stat-icon"></i>
+            <div class="stat-value"><?= $host['stats']['alerta'] ?? 0 ?></div>
+            <div class="stat-label">Rotinas com Alerta</div>
         </div>
     </div>
 </div>

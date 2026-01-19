@@ -44,21 +44,21 @@
         <div class="stat-card success position-relative">
             <i class="bi bi-check-circle stat-icon"></i>
             <div class="stat-value"><?= $cliente['stats_backup']['sucesso'] ?? 0 ?></div>
-            <div class="stat-label">Sucesso (30 dias)</div>
+            <div class="stat-label">Rotinas com Sucesso</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card danger position-relative">
             <i class="bi bi-x-circle stat-icon"></i>
             <div class="stat-value"><?= $cliente['stats_backup']['falha'] ?? 0 ?></div>
-            <div class="stat-label">Falhas (30 dias)</div>
+            <div class="stat-label">Rotinas com Falha</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="stat-card warning position-relative">
             <i class="bi bi-exclamation-triangle stat-icon"></i>
             <div class="stat-value"><?= $cliente['stats_backup']['alerta'] ?? 0 ?></div>
-            <div class="stat-label">Alertas (30 dias)</div>
+            <div class="stat-label">Rotinas com Alerta</div>
         </div>
     </div>
     <div class="col-md-3">

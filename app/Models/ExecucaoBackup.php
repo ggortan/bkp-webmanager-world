@@ -212,25 +212,30 @@ class ExecucaoBackup extends Model
      */
     public static function getLatestByRotina(): array
     {
-        // Usa uma abordagem mais simples com GROUP BY
-        $sql = "SELECT e.id, e.rotina_id, e.cliente_id, e.host_id, e.status, 
-                       e.data_inicio, e.data_fim, e.tamanho_bytes, e.destino,
-                       e.mensagem_erro, e.detalhes, e.created_at,
-                       r.nome as rotina_nome, h.nome as host_nome,
-                       c.nome as cliente_nome, c.identificador as cliente_identificador
-                FROM execucoes_backup e
-                INNER JOIN (
-                    SELECT rotina_id, MAX(id) as max_id
-                    FROM execucoes_backup
-                    GROUP BY rotina_id
-                ) latest ON e.id = latest.max_id
-                LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
-                LEFT JOIN hosts h ON e.host_id = h.id
-                LEFT JOIN clientes c ON e.cliente_id = c.id
-                WHERE r.ativo = 1 OR r.id IS NULL
-                ORDER BY e.data_inicio DESC";
-        
-        return \App\Database::fetchAll($sql) ?: [];
+        try {
+            // Usa uma abordagem mais simples com GROUP BY
+            $sql = "SELECT e.id, e.rotina_id, e.cliente_id, e.host_id, e.status, 
+                           e.data_inicio, e.data_fim, e.tamanho_bytes, e.destino,
+                           e.mensagem_erro, e.detalhes, e.created_at,
+                           r.nome as rotina_nome, h.nome as host_nome,
+                           c.nome as cliente_nome, c.identificador as cliente_identificador
+                    FROM execucoes_backup e
+                    INNER JOIN (
+                        SELECT rotina_id, MAX(id) as max_id
+                        FROM execucoes_backup
+                        GROUP BY rotina_id
+                    ) latest ON e.id = latest.max_id
+                    LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
+                    LEFT JOIN hosts h ON e.host_id = h.id
+                    LEFT JOIN clientes c ON e.cliente_id = c.id
+                    WHERE r.ativo = 1 OR r.id IS NULL
+                    ORDER BY e.data_inicio DESC";
+            
+            return \App\Database::fetchAll($sql) ?: [];
+        } catch (\Exception $e) {
+            // Fallback: retorna as execuções recentes normais
+            return self::getRecent(20);
+        }
     }
 
     /**
@@ -238,30 +243,35 @@ class ExecucaoBackup extends Model
      */
     public static function getStatsLatest(): array
     {
-        $sql = "SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN e.status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
-                    SUM(CASE WHEN e.status = 'falha' THEN 1 ELSE 0 END) as falha,
-                    SUM(CASE WHEN e.status = 'alerta' THEN 1 ELSE 0 END) as alerta,
-                    SUM(CASE WHEN e.status = 'executando' THEN 1 ELSE 0 END) as executando
-                FROM execucoes_backup e
-                INNER JOIN (
-                    SELECT rotina_id, MAX(id) as max_id
-                    FROM execucoes_backup
-                    GROUP BY rotina_id
-                ) latest ON e.id = latest.max_id
-                LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
-                WHERE r.ativo = 1 OR r.id IS NULL";
-        
-        $result = \App\Database::fetch($sql);
-        
-        return $result ?: [
-            'total' => 0,
-            'sucesso' => 0,
-            'falha' => 0,
-            'alerta' => 0,
-            'executando' => 0
-        ];
+        try {
+            $sql = "SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN e.status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
+                        SUM(CASE WHEN e.status = 'falha' THEN 1 ELSE 0 END) as falha,
+                        SUM(CASE WHEN e.status = 'alerta' THEN 1 ELSE 0 END) as alerta,
+                        SUM(CASE WHEN e.status = 'executando' THEN 1 ELSE 0 END) as executando
+                    FROM execucoes_backup e
+                    INNER JOIN (
+                        SELECT rotina_id, MAX(id) as max_id
+                        FROM execucoes_backup
+                        GROUP BY rotina_id
+                    ) latest ON e.id = latest.max_id
+                    LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
+                    WHERE r.ativo = 1 OR r.id IS NULL";
+            
+            $result = \App\Database::fetch($sql);
+            
+            return $result ?: [
+                'total' => 0,
+                'sucesso' => 0,
+                'falha' => 0,
+                'alerta' => 0,
+                'executando' => 0
+            ];
+        } catch (\Exception $e) {
+            // Fallback: usa stats dos últimos 30 dias
+            return self::getStats(30);
+        }
     }
 
     /**
@@ -269,25 +279,30 @@ class ExecucaoBackup extends Model
      */
     public static function getStatsByClienteLatest(): array
     {
-        $sql = "SELECT 
-                    c.id as cliente_id,
-                    c.nome as cliente_nome,
-                    c.identificador,
-                    COUNT(e.id) as total,
-                    SUM(CASE WHEN e.status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
-                    SUM(CASE WHEN e.status = 'falha' THEN 1 ELSE 0 END) as falha,
-                    SUM(CASE WHEN e.status = 'alerta' THEN 1 ELSE 0 END) as alerta,
-                    MAX(e.data_inicio) as ultima_execucao
-                FROM clientes c
-                LEFT JOIN rotinas_backup r ON c.id = r.cliente_id AND r.ativo = 1
-                LEFT JOIN execucoes_backup e ON r.id = e.rotina_id AND e.id = (
-                    SELECT MAX(e2.id) FROM execucoes_backup e2 WHERE e2.rotina_id = r.id
-                )
-                WHERE c.ativo = 1
-                GROUP BY c.id, c.nome, c.identificador
-                ORDER BY c.nome";
-        
-        return \App\Database::fetchAll($sql) ?: [];
+        try {
+            $sql = "SELECT 
+                        c.id as cliente_id,
+                        c.nome as cliente_nome,
+                        c.identificador,
+                        COUNT(e.id) as total,
+                        SUM(CASE WHEN e.status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
+                        SUM(CASE WHEN e.status = 'falha' THEN 1 ELSE 0 END) as falha,
+                        SUM(CASE WHEN e.status = 'alerta' THEN 1 ELSE 0 END) as alerta,
+                        MAX(e.data_inicio) as ultima_execucao
+                    FROM clientes c
+                    LEFT JOIN rotinas_backup r ON c.id = r.cliente_id AND r.ativo = 1
+                    LEFT JOIN execucoes_backup e ON r.id = e.rotina_id AND e.id = (
+                        SELECT MAX(e2.id) FROM execucoes_backup e2 WHERE e2.rotina_id = r.id
+                    )
+                    WHERE c.ativo = 1
+                    GROUP BY c.id, c.nome, c.identificador
+                    ORDER BY c.nome";
+            
+            return \App\Database::fetchAll($sql) ?: [];
+        } catch (\Exception $e) {
+            // Fallback: usa stats por cliente dos últimos 30 dias
+            return self::getStatsByCliente(30);
+        }
     }
 
     /**

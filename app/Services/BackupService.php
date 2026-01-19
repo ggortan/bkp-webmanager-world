@@ -216,33 +216,51 @@ class BackupService
      */
     public function getDashboardData(?int $dias = null): array
     {
-        // Se dias for null, usa as últimas execuções de cada rotina
-        if ($dias === null) {
+        try {
+            // Se dias for null, usa as últimas execuções de cada rotina
+            if ($dias === null) {
+                return [
+                    'stats' => ExecucaoBackup::getStatsLatest(),
+                    'stats_periodo' => ExecucaoBackup::getStatsByPeriod(7),
+                    'stats_clientes' => ExecucaoBackup::getStatsByClienteLatest(),
+                    'execucoes_recentes' => ExecucaoBackup::getLatestByRotina(),
+                    'total_clientes' => Cliente::count(['ativo' => 1]),
+                    'total_hosts' => \App\Database::fetch(
+                        "SELECT COUNT(*) as total FROM hosts WHERE ativo = 1"
+                    )['total'] ?? 0,
+                    'periodo' => 'latest'
+                ];
+            }
+            
+            // Caso contrário, usa o período em dias
             return [
-                'stats' => ExecucaoBackup::getStatsLatest(),
-                'stats_periodo' => ExecucaoBackup::getStatsByPeriod(7),
-                'stats_clientes' => ExecucaoBackup::getStatsByClienteLatest(),
-                'execucoes_recentes' => ExecucaoBackup::getLatestByRotina(),
+                'stats' => ExecucaoBackup::getStats($dias),
+                'stats_periodo' => ExecucaoBackup::getStatsByPeriod($dias),
+                'stats_clientes' => ExecucaoBackup::getStatsByCliente($dias),
+                'execucoes_recentes' => ExecucaoBackup::getRecent(20),
                 'total_clientes' => Cliente::count(['ativo' => 1]),
                 'total_hosts' => \App\Database::fetch(
                     "SELECT COUNT(*) as total FROM hosts WHERE ativo = 1"
                 )['total'] ?? 0,
-                'periodo' => 'latest'
+                'periodo' => $dias
+            ];
+        } catch (\Exception $e) {
+            // Em caso de erro, retorna dados padrão para evitar 500
+            \App\Services\LogService::error('backup', 'Erro ao carregar dashboard', [
+                'error' => $e->getMessage(),
+                'dias' => $dias
+            ]);
+            
+            return [
+                'stats' => ['total' => 0, 'sucesso' => 0, 'falha' => 0, 'alerta' => 0, 'executando' => 0],
+                'stats_periodo' => [],
+                'stats_clientes' => [],
+                'execucoes_recentes' => [],
+                'total_clientes' => 0,
+                'total_hosts' => 0,
+                'periodo' => $dias ?? 'latest'
             ];
         }
-        
-        // Caso contrário, usa o período em dias
-        return [
-            'stats' => ExecucaoBackup::getStats($dias),
-            'stats_periodo' => ExecucaoBackup::getStatsByPeriod($dias),
-            'stats_clientes' => ExecucaoBackup::getStatsByCliente($dias),
-            'execucoes_recentes' => ExecucaoBackup::getRecent(20),
-            'total_clientes' => Cliente::count(['ativo' => 1]),
-            'total_hosts' => \App\Database::fetch(
-                "SELECT COUNT(*) as total FROM hosts WHERE ativo = 1"
-            )['total'] ?? 0,
-            'periodo' => $dias
-        ];
     }
 
     /**

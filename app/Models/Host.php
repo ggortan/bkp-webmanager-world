@@ -70,7 +70,7 @@ class Host extends Model
     }
 
     /**
-     * Retorna host com estatísticas
+     * Retorna host com estatísticas (baseado na última execução de cada rotina)
      */
     public static function withStats(int $id): ?array
     {
@@ -91,15 +91,33 @@ class Host extends Model
                 ORDER BY data_inicio DESC LIMIT 1";
         $host['ultima_execucao'] = \App\Database::fetch($sql, [$id]);
         
-        // Estatísticas dos últimos 7 dias
-        $sql = "SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
-                    SUM(CASE WHEN status = 'falha' THEN 1 ELSE 0 END) as falha
-                FROM execucoes_backup 
-                WHERE host_id = ? AND data_inicio >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
-        
-        $host['stats'] = \App\Database::fetch($sql, [$id]);
+        // Estatísticas baseadas na última execução de cada rotina do host
+        try {
+            $sql = "SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN e.status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
+                        SUM(CASE WHEN e.status = 'falha' THEN 1 ELSE 0 END) as falha,
+                        SUM(CASE WHEN e.status = 'alerta' THEN 1 ELSE 0 END) as alerta
+                    FROM execucoes_backup e
+                    INNER JOIN (
+                        SELECT rotina_id, MAX(id) as max_id
+                        FROM execucoes_backup
+                        WHERE host_id = ?
+                        GROUP BY rotina_id
+                    ) latest ON e.id = latest.max_id";
+            
+            $host['stats'] = \App\Database::fetch($sql, [$id]) ?: ['total' => 0, 'sucesso' => 0, 'falha' => 0, 'alerta' => 0];
+        } catch (\Exception $ex) {
+            // Fallback: estatísticas dos últimos 7 dias
+            $sql = "SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
+                        SUM(CASE WHEN status = 'falha' THEN 1 ELSE 0 END) as falha
+                    FROM execucoes_backup 
+                    WHERE host_id = ? AND data_inicio >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+            
+            $host['stats'] = \App\Database::fetch($sql, [$id]);
+        }
         
         return $host;
     }
