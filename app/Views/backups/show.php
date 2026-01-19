@@ -395,7 +395,9 @@ if ($execucao['data_inicio'] && $execucao['data_fim']) {
                     <th>Nome</th>
                     <th>Status</th>
                     <th>Dados Processados</th>
+                    <th>Transferido</th>
                     <th>Duração</th>
+                    <th>Velocidade Média</th>
                 </tr>
             </thead>
             <tbody>
@@ -404,6 +406,9 @@ if ($execucao['data_inicio'] && $execucao['data_fim']) {
                     <td>
                         <i class="bi bi-display me-1 text-muted"></i>
                         <strong><?= htmlspecialchars($vm['Name'] ?? '-') ?></strong>
+                        <?php if (!empty($vm['Reason'])): ?>
+                        <br><small class="text-danger"><i class="bi bi-exclamation-circle me-1"></i><?= htmlspecialchars($vm['Reason']) ?></small>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <?php 
@@ -415,16 +420,114 @@ if ($execucao['data_inicio'] && $execucao['data_fim']) {
                         </span>
                     </td>
                     <td><?= formatBytesDetailed($vm['ProcessedSize'] ?? 0) ?></td>
+                    <td><?= formatBytesDetailed($vm['TransferredSize'] ?? $vm['TransferedSize'] ?? 0) ?></td>
                     <td><?= htmlspecialchars($vm['Duration'] ?? '-') ?></td>
+                    <td><?= isset($vm['AvgSpeed']) ? formatBytesDetailed($vm['AvgSpeed']) . '/s' : '-' ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
 </div>
+<?php endif; ?>
+
+<?php if ($isVeeam && (!empty($detalhes['Warnings']) || !empty($detalhes['ErrorLogs']) || !empty($detalhes['FailureMessage']))): ?>
+<!-- Seção Veeam: Erros e Alertas -->
+<div class="report-section">
+    <div class="report-header bg-danger">
+        <h5><i class="bi bi-exclamation-octagon me-2"></i>Erros e Alertas</h5>
+        <div class="subtitle">Detalhes dos problemas encontrados durante o backup</div>
+    </div>
+    <div class="report-body">
+        <?php if (!empty($execucao['mensagem_erro'])): ?>
+        <div class="alert alert-danger mb-3">
+            <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Mensagem de Erro Principal</h6>
+            <p class="mb-0"><?= nl2br(htmlspecialchars($execucao['mensagem_erro'])) ?></p>
+        </div>
+        <?php endif; ?>
+        
+        <?php if (!empty($detalhes['FailureMessage'])): ?>
+        <div class="alert alert-warning mb-3">
+            <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Detalhes da Falha</h6>
+            <p class="mb-0"><?= nl2br(htmlspecialchars($detalhes['FailureMessage'])) ?></p>
+        </div>
+        <?php endif; ?>
+        
+        <?php if (!empty($detalhes['ResultDescription'])): ?>
+        <div class="alert alert-secondary mb-3">
+            <h6 class="alert-heading"><i class="bi bi-file-text me-2"></i>Descrição do Resultado</h6>
+            <p class="mb-0"><?= nl2br(htmlspecialchars($detalhes['ResultDescription'])) ?></p>
+        </div>
+        <?php endif; ?>
+        
+        <?php if (!empty($detalhes['Warnings'])): ?>
+        <h6 class="mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Objetos com Problemas</h6>
+        <table class="data-table mb-4">
+            <thead>
+                <tr>
+                    <th>Objeto</th>
+                    <th>Status</th>
+                    <th>Motivo</th>
+                    <th>Detalhes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($detalhes['Warnings'] as $warning): ?>
+                <tr>
+                    <td><strong><?= htmlspecialchars($warning['Object'] ?? '-') ?></strong></td>
+                    <td>
+                        <?php $warnStatus = strtolower($warning['Status'] ?? 'warning'); ?>
+                        <span class="badge bg-<?= $warnStatus === 'failed' ? 'danger' : 'warning' ?>">
+                            <?= htmlspecialchars($warning['Status'] ?? 'Warning') ?>
+                        </span>
+                    </td>
+                    <td><?= htmlspecialchars($warning['Reason'] ?? '-') ?></td>
+                    <td><small><?= htmlspecialchars($warning['Details'] ?? '-') ?></small></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+        
+        <?php if (!empty($detalhes['ErrorLogs'])): ?>
+        <h6 class="mb-3"><i class="bi bi-journal-x me-2"></i>Logs de Erro da Sessão</h6>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Horário</th>
+                        <th>Nível</th>
+                        <th>Mensagem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($detalhes['ErrorLogs'] as $log): ?>
+                    <tr>
+                        <td class="text-nowrap"><?= htmlspecialchars($log['Time'] ?? '-') ?></td>
+                        <td>
+                            <?php 
+                            $logStatus = $log['Status'] ?? 'EWarning';
+                            $logClass = match($logStatus) {
+                                'EFailed', 'Error' => 'danger',
+                                'EWarning' => 'warning',
+                                default => 'secondary'
+                            };
+                            ?>
+                            <span class="badge bg-<?= $logClass ?>"><?= htmlspecialchars($logStatus) ?></span>
+                        </td>
+                        <td><?= htmlspecialchars($log['Message'] ?? '-') ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Estatísticas Veeam -->
-<?php if (isset($detalhes['SourceSize']) || isset($detalhes['TransferedSize'])): ?>
+<?php if ($isVeeam && (isset($detalhes['SourceSize']) || isset($detalhes['TransferedSize']) || isset($detalhes['AvgSpeed']))): ?>
 <div class="report-section">
     <div class="report-header" style="background: linear-gradient(135deg, #00b336 0%, #009929 100%);">
         <h5><i class="bi bi-bar-chart me-2"></i>Estatísticas de Processamento</h5>
@@ -439,6 +542,14 @@ if ($execucao['data_inicio'] && $execucao['data_fim']) {
                 </div>
             </div>
             <?php endif; ?>
+            <?php if (isset($detalhes['ReadSize'])): ?>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value"><?= formatBytesDetailed($detalhes['ReadSize']) ?></div>
+                    <div class="metric-label">Dados Lidos</div>
+                </div>
+            </div>
+            <?php endif; ?>
             <?php if (isset($detalhes['TransferedSize'])): ?>
             <div class="col-md-3">
                 <div class="metric-card">
@@ -447,11 +558,35 @@ if ($execucao['data_inicio'] && $execucao['data_fim']) {
                 </div>
             </div>
             <?php endif; ?>
+            <?php if (isset($detalhes['BackupSize'])): ?>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value"><?= formatBytesDetailed($detalhes['BackupSize']) ?></div>
+                    <div class="metric-label">Tamanho do Backup</div>
+                </div>
+            </div>
+            <?php endif; ?>
             <?php if (isset($detalhes['ProcessedObjects']) && isset($detalhes['TotalObjects'])): ?>
             <div class="col-md-3">
                 <div class="metric-card">
                     <div class="metric-value"><?= $detalhes['ProcessedObjects'] ?>/<?= $detalhes['TotalObjects'] ?></div>
                     <div class="metric-label">Objetos Processados</div>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php if (isset($detalhes['AvgSpeed'])): ?>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value"><?= formatBytesDetailed($detalhes['AvgSpeed']) ?>/s</div>
+                    <div class="metric-label">Velocidade Média</div>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php if (isset($detalhes['Duration'])): ?>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-value"><?= htmlspecialchars($detalhes['Duration']) ?></div>
+                    <div class="metric-label">Duração Total</div>
                 </div>
             </div>
             <?php endif; ?>
@@ -468,25 +603,143 @@ if ($execucao['data_inicio'] && $execucao['data_fim']) {
             <?php endif; ?>
         </div>
         
-        <?php if (!empty($detalhes['TargetRepository'])): ?>
+        <?php if (!empty($detalhes['Bottleneck'])): ?>
+        <div class="alert alert-info mt-4 mb-0">
+            <i class="bi bi-speedometer2 me-2"></i>
+            <strong>Gargalo de Performance:</strong> <?= htmlspecialchars($detalhes['Bottleneck']) ?>
+        </div>
+        <?php endif; ?>
+        
         <div class="mt-4">
+            <h6 class="mb-3"><i class="bi bi-info-circle me-2"></i>Informações da Sessão</h6>
             <table class="info-table">
+                <?php if (!empty($detalhes['TargetRepository'])): ?>
                 <tr>
                     <th>Repositório de Destino:</th>
-                    <td><code><?= htmlspecialchars($detalhes['TargetRepository']) ?></code></td>
+                    <td>
+                        <code><?= htmlspecialchars($detalhes['TargetRepository']) ?></code>
+                        <?php if (!empty($detalhes['RepositoryPath'])): ?>
+                        <br><small class="text-muted"><?= htmlspecialchars($detalhes['RepositoryPath']) ?></small>
+                        <?php endif; ?>
+                        <?php if (!empty($detalhes['RepositoryType'])): ?>
+                        <span class="badge bg-secondary ms-2"><?= htmlspecialchars($detalhes['RepositoryType']) ?></span>
+                        <?php endif; ?>
+                    </td>
                 </tr>
+                <?php endif; ?>
                 <?php if (!empty($detalhes['SessionId'])): ?>
                 <tr>
                     <th>ID da Sessão:</th>
                     <td><code><?= htmlspecialchars($detalhes['SessionId']) ?></code></td>
                 </tr>
                 <?php endif; ?>
+                <?php if (!empty($detalhes['SessionName'])): ?>
+                <tr>
+                    <th>Nome da Sessão:</th>
+                    <td><?= htmlspecialchars($detalhes['SessionName']) ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if (!empty($detalhes['job_id'])): ?>
+                <tr>
+                    <th>ID do Job:</th>
+                    <td><code><?= htmlspecialchars($detalhes['job_id']) ?></code></td>
+                </tr>
+                <?php endif; ?>
+                <?php if (!empty($detalhes['job_type'])): ?>
+                <tr>
+                    <th>Tipo do Job:</th>
+                    <td><?= htmlspecialchars($detalhes['job_type']) ?></td>
+                </tr>
+                <?php endif; ?>
+                <tr>
+                    <th>Tipo de Backup:</th>
+                    <td>
+                        <?php if (!empty($detalhes['IsFullBackup'])): ?>
+                        <span class="badge bg-primary">Backup Completo (Full)</span>
+                        <?php else: ?>
+                        <span class="badge bg-info">Backup Incremental</span>
+                        <?php endif; ?>
+                        <?php if (!empty($detalhes['IsRetry'])): ?>
+                        <span class="badge bg-warning text-dark ms-1">Retry</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php if (isset($detalhes['WillBeRetried'])): ?>
+                <tr>
+                    <th>Será Retentado:</th>
+                    <td><?= $detalhes['WillBeRetried'] ? '<span class="badge bg-warning text-dark">Sim</span>' : '<span class="badge bg-success">Não</span>' ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if (!empty($detalhes['State'])): ?>
+                <tr>
+                    <th>Estado Final:</th>
+                    <td><?= htmlspecialchars($detalhes['State']) ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if (!empty($detalhes['Result'])): ?>
+                <tr>
+                    <th>Resultado:</th>
+                    <td>
+                        <?php 
+                        $resultClass = match(strtolower($detalhes['Result'])) {
+                            'success' => 'success',
+                            'warning' => 'warning',
+                            'failed' => 'danger',
+                            default => 'secondary'
+                        };
+                        ?>
+                        <span class="badge bg-<?= $resultClass ?>"><?= htmlspecialchars($detalhes['Result']) ?></span>
+                    </td>
+                </tr>
+                <?php endif; ?>
             </table>
         </div>
-        <?php endif; ?>
     </div>
 </div>
 <?php endif; ?>
+
+<?php if ($isVeeam && !empty($detalhes['Repositories'])): ?>
+<!-- Repositórios Veeam -->
+<div class="report-section">
+    <div class="report-header" style="background: linear-gradient(135deg, #00b336 0%, #009929 100%);">
+        <h5><i class="bi bi-database me-2"></i>Repositórios de Backup</h5>
+    </div>
+    <div class="report-body p-0">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Tipo</th>
+                    <th>Caminho</th>
+                    <th>Espaço Total</th>
+                    <th>Usado</th>
+                    <th>Livre</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($detalhes['Repositories'] as $repo): ?>
+                <tr>
+                    <td><strong><?= htmlspecialchars($repo['Name'] ?? '-') ?></strong></td>
+                    <td><span class="badge bg-secondary"><?= htmlspecialchars($repo['Type'] ?? '-') ?></span></td>
+                    <td><code><?= htmlspecialchars($repo['Path'] ?? '-') ?></code></td>
+                    <td><?= formatBytesDetailed($repo['TotalSpace'] ?? 0) ?></td>
+                    <td><?= formatBytesDetailed($repo['UsedSpace'] ?? 0) ?></td>
+                    <td>
+                        <?php 
+                        $freeSpace = $repo['FreeSpace'] ?? 0;
+                        $totalSpace = $repo['TotalSpace'] ?? 1;
+                        $freePercent = ($totalSpace > 0) ? ($freeSpace / $totalSpace * 100) : 0;
+                        $freeClass = $freePercent > 50 ? 'success' : ($freePercent > 20 ? 'warning' : 'danger');
+                        ?>
+                        <span class="text-<?= $freeClass ?>"><?= formatBytesDetailed($freeSpace) ?></span>
+                        <small class="text-muted">(<?= number_format($freePercent, 1) ?>%)</small>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
 <?php endif; ?>
 
 <?php if ($isWSB): ?>

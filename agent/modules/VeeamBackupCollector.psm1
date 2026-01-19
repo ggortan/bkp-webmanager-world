@@ -148,32 +148,104 @@ function Get-VeeamBackupJobs {
                     ObjectsCount = $totalObjects
                     Details = @{
                         SessionId = $lastSession.Id
+                        SessionName = $lastSession.Name
                         IsFullBackup = $lastSession.IsFullMode
                         IsRetry = $lastSession.IsRetryMode
                         Progress = $lastSession.Progress
-                        TargetRepository = $job.GetTargetRepository().Name
+                        State = $lastSession.State
+                        ResultDescription = $lastSession.Description
                         SourceSize = $lastSession.Info.Progress.TotalSize
                         TransferedSize = $lastSession.Info.Progress.TransferedSize
+                        ReadSize = $lastSession.Info.Progress.ReadSize
                         ProcessedObjects = $lastSession.Info.Progress.ProcessedObjects
                         TotalObjects = $lastSession.Info.Progress.TotalObjects
+                        AvgSpeed = $lastSession.Info.Progress.AvgSpeed
+                        Duration = $lastSession.Info.Progress.Duration
+                        Bottleneck = $lastSession.Info.Bottleneck
+                        WillBeRetried = $lastSession.WillBeRetried
                     }
                 }
                 
-                # Adiciona informação de erro se houver
+                # Adiciona informações do repositório
+                try {
+                    $targetRepo = $job.GetTargetRepository()
+                    if ($targetRepo) {
+                        $backupJob.Details['TargetRepository'] = $targetRepo.Name
+                        $backupJob.Details['RepositoryPath'] = $targetRepo.Path
+                        $backupJob.Details['RepositoryType'] = $targetRepo.Type
+                    }
+                } catch { }
+                
+                # Adiciona informação de erro/alerta detalhada
                 if ($status -in @("falha", "alerta")) {
+                    # Razão principal
                     $backupJob.ErrorMessage = $lastSession.Info.Reason
-                    $backupJob.Details.FailureMessage = $lastSession.GetDetails()
+                    
+                    # Detalhes completos da sessão
+                    try {
+                        $backupJob.Details['FailureMessage'] = $lastSession.GetDetails()
+                    } catch { }
+                    
+                    # Warnings da sessão
+                    try {
+                        $sessionWarnings = @()
+                        foreach ($taskSession in $taskSessions) {
+                            if ($taskSession.Status -ne 'Success') {
+                                $sessionWarnings += @{
+                                    Object = $taskSession.Name
+                                    Status = $taskSession.Status.ToString()
+                                    Reason = $taskSession.Info.Reason
+                                    Details = $taskSession.Info.Details
+                                }
+                            }
+                        }
+                        if ($sessionWarnings.Count -gt 0) {
+                            $backupJob.Details['Warnings'] = $sessionWarnings
+                        }
+                    } catch { }
+                    
+                    # Log de eventos da sessão
+                    try {
+                        $sessionLogs = Get-VBRSession -Job $job | 
+                            Where-Object { $_.Id -eq $lastSession.Id } |
+                            ForEach-Object { $_.Logger.GetLog().UpdatedRecords } |
+                            Where-Object { $_.Status -in @('EWarning', 'EFailed', 'Error') } |
+                            Select-Object -First 10 |
+                            ForEach-Object {
+                                @{
+                                    Time = $_.Title
+                                    Status = $_.Status.ToString()
+                                    Message = $_.Description
+                                }
+                            }
+                        if ($sessionLogs) {
+                            $backupJob.Details['ErrorLogs'] = @($sessionLogs)
+                        }
+                    } catch { }
                 }
                 
-                # Adiciona informações de VMs processadas
+                # Adiciona informações de VMs processadas com detalhes de erro
                 $vms = @()
                 foreach ($taskSession in $taskSessions) {
-                    $vms += @{
+                    $vmInfo = @{
                         Name = $taskSession.Name
-                        Status = $taskSession.Status
+                        Status = $taskSession.Status.ToString()
                         ProcessedSize = $taskSession.ProcessedSize
-                        Duration = $taskSession.Progress.Duration
+                        ReadSize = $taskSession.Progress.ReadSize
+                        TransferredSize = $taskSession.Progress.TransferedSize
+                        Duration = if ($taskSession.Progress.Duration) { $taskSession.Progress.Duration.ToString() } else { $null }
+                        StartTime = if ($taskSession.Progress.StartTimeLocal) { $taskSession.Progress.StartTimeLocal.ToString("yyyy-MM-dd HH:mm:ss") } else { $null }
+                        StopTime = if ($taskSession.Progress.StopTimeLocal) { $taskSession.Progress.StopTimeLocal.ToString("yyyy-MM-dd HH:mm:ss") } else { $null }
+                        AvgSpeed = $taskSession.Progress.AvgSpeed
                     }
+                    
+                    # Adiciona razão de erro/warning se existir
+                    if ($taskSession.Status -ne 'Success') {
+                        $vmInfo['Reason'] = $taskSession.Info.Reason
+                        $vmInfo['Details'] = $taskSession.Info.Details
+                    }
+                    
+                    $vms += $vmInfo
                 }
                 $backupJob.Details.ProcessedVMs = $vms
                 
@@ -342,15 +414,31 @@ function ConvertTo-StandardVeeamFormat {
             Result = $Job.Result
             BackupSize = $Job.BackupSize
             ObjectsCount = $Job.ObjectsCount
+            
+            # Informações da sessão
+            SessionId = $Job.Details.SessionId
+            SessionName = $Job.Details.SessionName
             IsFullBackup = $Job.Details.IsFullBackup
             IsRetry = $Job.Details.IsRetry
-            TargetRepository = $Job.Details.TargetRepository
-            SessionId = $Job.Details.SessionId
+            State = $Job.Details.State
+            ResultDescription = $Job.Details.ResultDescription
+            WillBeRetried = $Job.Details.WillBeRetried
+            
+            # Informações de tamanho e progresso
             SourceSize = $Job.Details.SourceSize
             TransferedSize = $Job.Details.TransferedSize
+            ReadSize = $Job.Details.ReadSize
             ProcessedObjects = $Job.Details.ProcessedObjects
             TotalObjects = $Job.Details.TotalObjects
             Progress = $Job.Details.Progress
+            AvgSpeed = $Job.Details.AvgSpeed
+            Duration = $Job.Details.Duration
+            Bottleneck = $Job.Details.Bottleneck
+            
+            # Repositório
+            TargetRepository = $Job.Details.TargetRepository
+            RepositoryPath = $Job.Details.RepositoryPath
+            RepositoryType = $Job.Details.RepositoryType
         }
     }
     
@@ -359,7 +447,7 @@ function ConvertTo-StandardVeeamFormat {
         $standardFormat.destino = $Job.Details.TargetRepository
     }
     
-    # Adiciona mensagem de erro
+    # Adiciona mensagem de erro e detalhes de falha
     if ($Job.Status -in @("falha", "alerta")) {
         if ($Job.ErrorMessage) {
             $standardFormat.mensagem_erro = $Job.ErrorMessage
@@ -367,9 +455,17 @@ function ConvertTo-StandardVeeamFormat {
         if ($Job.Details.FailureMessage) {
             $standardFormat.detalhes['FailureMessage'] = $Job.Details.FailureMessage
         }
+        # Adiciona warnings de objetos com problemas
+        if ($Job.Details.Warnings -and $Job.Details.Warnings.Count -gt 0) {
+            $standardFormat.detalhes['Warnings'] = $Job.Details.Warnings
+        }
+        # Adiciona logs de erro da sessão
+        if ($Job.Details.ErrorLogs -and $Job.Details.ErrorLogs.Count -gt 0) {
+            $standardFormat.detalhes['ErrorLogs'] = $Job.Details.ErrorLogs
+        }
     }
     
-    # Adiciona lista de VMs processadas com formato detalhado
+    # Adiciona lista de VMs processadas com formato detalhado (inclui status individual e razões de erro)
     if ($Job.Details.ProcessedVMs -and $Job.Details.ProcessedVMs.Count -gt 0) {
         $standardFormat.detalhes['ProcessedVMs'] = $Job.Details.ProcessedVMs
     }
