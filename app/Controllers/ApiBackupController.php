@@ -78,12 +78,21 @@ class ApiBackupController extends Controller
         try {
             $result = $this->backupService->registrarExecucao($data, $cliente);
             
+            // Determina o status HTTP baseado na ação
+            $httpStatus = match($result['action'] ?? 'created') {
+                'created' => 201,
+                'updated' => 200,
+                'skipped' => 200,
+                default => 200
+            };
+            
             $this->json([
                 'success' => true,
                 'message' => $result['message'],
                 'execucao_id' => $result['execucao_id'],
-                'status' => 201
-            ], 201);
+                'action' => $result['action'] ?? 'created',
+                'status' => $httpStatus
+            ], $httpStatus);
             
         } catch (\Exception $e) {
             LogService::error('api', 'Erro ao processar backup', [

@@ -18,6 +18,85 @@ class ExecucaoBackup extends Model
     }
 
     /**
+     * Verifica se já existe uma execução duplicada
+     * Considera duplicada se: mesma rotina_id + mesma data_inicio + mesmo status
+     */
+    public static function existsDuplicate(int $rotinaId, string $dataInicio, string $status): bool
+    {
+        $sql = "SELECT id FROM execucoes_backup 
+                WHERE rotina_id = ? AND data_inicio = ? AND status = ?
+                LIMIT 1";
+        
+        $result = \App\Database::fetch($sql, [$rotinaId, $dataInicio, $status]);
+        return $result !== null;
+    }
+
+    /**
+     * Encontra execução existente por rotina_id e data_inicio
+     * Retorna a execução se existir, null caso contrário
+     */
+    public static function findByRotinaAndDataInicio(int $rotinaId, string $dataInicio): ?array
+    {
+        $sql = "SELECT * FROM execucoes_backup 
+                WHERE rotina_id = ? AND data_inicio = ?
+                LIMIT 1";
+        
+        return \App\Database::fetch($sql, [$rotinaId, $dataInicio]);
+    }
+
+    /**
+     * Registra ou atualiza uma execução de backup (upsert)
+     * Se já existe uma execução com mesma rotina_id + data_inicio, atualiza
+     * Caso contrário, cria nova
+     */
+    public static function upsert(array $data): array
+    {
+        $existing = self::findByRotinaAndDataInicio($data['rotina_id'], $data['data_inicio']);
+        
+        if ($existing) {
+            // Atualiza apenas se o status for diferente ou se for uma atualização válida
+            // (ex: de 'executando' para 'sucesso' ou 'falha')
+            $shouldUpdate = false;
+            
+            // Sempre atualiza se o status mudou
+            if ($existing['status'] !== $data['status']) {
+                $shouldUpdate = true;
+            }
+            
+            // Atualiza se tem data_fim e a existente não tem
+            if (!empty($data['data_fim']) && empty($existing['data_fim'])) {
+                $shouldUpdate = true;
+            }
+            
+            // Atualiza se tem tamanho e a existente não tem
+            if (!empty($data['tamanho_bytes']) && empty($existing['tamanho_bytes'])) {
+                $shouldUpdate = true;
+            }
+            
+            if ($shouldUpdate) {
+                self::update($existing['id'], $data);
+                return [
+                    'action' => 'updated',
+                    'id' => $existing['id']
+                ];
+            }
+            
+            return [
+                'action' => 'skipped',
+                'id' => $existing['id'],
+                'reason' => 'duplicate'
+            ];
+        }
+        
+        // Cria nova execução
+        $id = self::create($data);
+        return [
+            'action' => 'created',
+            'id' => $id
+        ];
+    }
+
+    /**
      * Lista execuções de uma rotina
      */
     public static function byRotina(int $rotinaId, int $limit = 50): array

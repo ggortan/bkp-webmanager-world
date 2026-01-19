@@ -91,12 +91,16 @@ if (!$isApiRequest && session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Regenera ID da sessão periodicamente (apenas se sessão foi iniciada)
-if (session_status() === PHP_SESSION_ACTIVE) {
-    if (!isset($_SESSION['last_regeneration'])) {
-        $_SESSION['last_regeneration'] = time();
-    } elseif (time() - $_SESSION['last_regeneration'] > 300) {
+// Regenera ID da sessão periodicamente para segurança (apenas se usuário logado)
+// Não regenera durante o processo de login para evitar perda de sessão
+if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_id'])) {
+    // Só regenera se last_regeneration existir e passou tempo suficiente
+    if (isset($_SESSION['last_regeneration']) && time() - $_SESSION['last_regeneration'] > 300) {
+        // Salva dados importantes antes de regenerar
+        $sessionData = $_SESSION;
         session_regenerate_id(true);
+        // Restaura dados da sessão
+        $_SESSION = $sessionData;
         $_SESSION['last_regeneration'] = time();
     }
 }

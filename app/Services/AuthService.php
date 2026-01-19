@@ -147,8 +147,16 @@ class AuthService
      */
     public function login(array $user): void
     {
+        // Limpa dados de sessão anterior (exceto flash messages)
+        $flash = $_SESSION['flash'] ?? null;
+        
         // Regenera ID da sessão ANTES de definir os dados (segurança e persistência)
         session_regenerate_id(true);
+        
+        // Restaura flash messages se existiam
+        if ($flash) {
+            $_SESSION['flash'] = $flash;
+        }
         
         // Define os dados do usuário na nova sessão
         $_SESSION['user_id'] = $user['id'];
@@ -161,8 +169,13 @@ class AuthService
             'role' => $this->getRoleName($user['role_id'])
         ];
         
-        // Atualiza timestamp de regeneração para evitar regeneração imediata
+        // Marca a sessão como iniciada agora (evita regeneração imediata no index.php)
         $_SESSION['last_regeneration'] = time();
+        $_SESSION['login_time'] = time();
+        
+        // Força gravação da sessão para garantir persistência
+        session_write_close();
+        session_start();
         
         // Atualiza último login
         Usuario::updateLastLogin($user['id']);

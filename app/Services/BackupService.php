@@ -148,7 +148,7 @@ class BackupService
                 $detalhes['host_info'] = $hostInfo;
             }
             
-            // Registra a execução
+            // Prepara dados da execução
             $execucaoData = [
                 'rotina_id' => $rotina['id'],
                 'cliente_id' => $cliente['id'],
@@ -162,12 +162,24 @@ class BackupService
                 'detalhes' => !empty($detalhes) ? json_encode($detalhes) : null
             ];
             
-            $execucaoId = ExecucaoBackup::registrar($execucaoData);
+            // Usa upsert para evitar duplicações
+            // Se já existe uma execução com mesma rotina_id + data_inicio, atualiza em vez de criar
+            $result = ExecucaoBackup::upsert($execucaoData);
+            $execucaoId = $result['id'];
+            $action = $result['action'];
             
             Database::commit();
             
+            // Define a mensagem baseada na ação
+            $message = match($action) {
+                'created' => 'Execução registrada com sucesso',
+                'updated' => 'Execução atualizada com sucesso',
+                'skipped' => 'Execução já existe (duplicada ignorada)',
+                default => 'Execução processada'
+            };
+            
             // Log
-            LogService::api('Execução de backup registrada', [
+            LogService::api('Execução de backup processada', [
                 'cliente_id' => $cliente['id'],
                 'cliente' => $cliente['identificador'],
                 'rotina_id' => $rotina['id'],
@@ -175,13 +187,15 @@ class BackupService
                 'routine_key' => $rotina['routine_key'],
                 'host' => $host ? $host['nome'] : 'N/A',
                 'status' => $data['status'],
-                'execucao_id' => $execucaoId
+                'execucao_id' => $execucaoId,
+                'action' => $action
             ]);
             
             return [
                 'success' => true,
                 'execucao_id' => $execucaoId,
-                'message' => 'Execução registrada com sucesso'
+                'action' => $action,
+                'message' => $message
             ];
             
         } catch (\Exception $e) {
