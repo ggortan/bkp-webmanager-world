@@ -311,7 +311,28 @@
                                     </td>
                                     <td class="text-center">
                                         <?php if (!empty($rotina['ultima_execucao'])): ?>
-                                            <?= date('d/m H:i', strtotime($rotina['ultima_execucao'])) ?>
+                                            <?php 
+                                            $statusClass = match($rotina['ultimo_status'] ?? '') {
+                                                'sucesso' => 'success',
+                                                'falha' => 'danger',
+                                                'alerta' => 'warning',
+                                                'executando' => 'info',
+                                                default => 'secondary'
+                                            };
+                                            $statusIcon = match($rotina['ultimo_status'] ?? '') {
+                                                'sucesso' => 'check-circle-fill',
+                                                'falha' => 'x-circle-fill',
+                                                'alerta' => 'exclamation-triangle-fill',
+                                                'executando' => 'arrow-repeat',
+                                                default => 'question-circle'
+                                            };
+                                            ?>
+                                            <span class="badge bg-<?= $statusClass ?>">
+                                                <i class="bi bi-<?= $statusIcon ?> me-1"></i>
+                                                <?= ucfirst($rotina['ultimo_status'] ?? 'Desconhecido') ?>
+                                            </span>
+                                            <br>
+                                            <small class="text-muted"><?= date('d/m H:i', strtotime($rotina['ultima_execucao'])) ?></small>
                                         <?php else: ?>
                                             <span class="text-muted">Nunca</span>
                                         <?php endif; ?>

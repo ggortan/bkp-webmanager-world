@@ -50,10 +50,15 @@ class ClienteController extends Controller
         
         $hosts = Host::byCliente($id);
         
-        // Buscar rotinas com nome do host
-        $sql = "SELECT r.*, h.nome as host_nome 
+        // Buscar rotinas com nome do host e última execução
+        $sql = "SELECT r.*, h.nome as host_nome,
+                       e.data_inicio as ultima_execucao,
+                       e.status as ultimo_status
                 FROM rotinas_backup r 
                 LEFT JOIN hosts h ON r.host_id = h.id 
+                LEFT JOIN execucoes_backup e ON e.id = (
+                    SELECT MAX(e2.id) FROM execucoes_backup e2 WHERE e2.rotina_id = r.id
+                )
                 WHERE r.cliente_id = ? 
                 ORDER BY r.nome ASC";
         $rotinas = \App\Database::fetchAll($sql, [$id]);
