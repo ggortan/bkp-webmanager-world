@@ -1,24 +1,21 @@
 <?php
 $periodoAtual = $periodo_atual ?? 'latest';
-$periodoTexto = match($periodoAtual) {
-    'latest' => 'Últimas Execuções',
-    7 => 'Últimos 7 dias',
-    30 => 'Últimos 30 dias',
-    default => 'Últimas Execuções'
-};
+$isLatest = $periodoAtual === 'latest';
+$is7dias = $periodoAtual === 7 || $periodoAtual === '7';
+$is30dias = $periodoAtual === 30 || $periodoAtual === '30';
 ?>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">Dashboard</h4>
     <div class="d-flex align-items-center gap-2">
         <span class="text-muted me-2">Período:</span>
         <div class="btn-group" role="group">
-            <a href="<?= path('/') ?>" class="btn btn-sm <?= $periodoAtual === 'latest' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+            <a href="<?= path('/') ?>" class="btn btn-sm <?= $isLatest ? 'btn-primary' : 'btn-outline-secondary' ?>">
                 Últimas Execuções
             </a>
-            <a href="<?= path('/') ?>?periodo=7" class="btn btn-sm <?= $periodoAtual === 7 ? 'btn-primary' : 'btn-outline-secondary' ?>">
+            <a href="<?= path('/') ?>?periodo=7" class="btn btn-sm <?= $is7dias ? 'btn-primary' : 'btn-outline-secondary' ?>">
                 7 dias
             </a>
-            <a href="<?= path('/') ?>?periodo=30" class="btn btn-sm <?= $periodoAtual === 30 ? 'btn-primary' : 'btn-outline-secondary' ?>">
+            <a href="<?= path('/') ?>?periodo=30" class="btn btn-sm <?= $is30dias ? 'btn-primary' : 'btn-outline-secondary' ?>">
                 30 dias
             </a>
         </div>
@@ -194,7 +191,7 @@ $periodoTexto = match($periodoAtual) {
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>
                     <i class="bi bi-clock-history me-2"></i>
-                    <?= $periodoAtual === 'latest' ? 'Última Execução por Rotina' : 'Últimas Execuções' ?>
+                    <?= $isLatest ? 'Última Execução por Rotina' : 'Últimas Execuções' ?>
                 </span>
                 <a href="<?= path('/backups') ?>" class="btn btn-sm btn-outline-primary">Ver todas</a>
             </div>

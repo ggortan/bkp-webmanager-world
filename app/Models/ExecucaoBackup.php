@@ -212,21 +212,25 @@ class ExecucaoBackup extends Model
      */
     public static function getLatestByRotina(): array
     {
-        $sql = "SELECT e.*, r.nome as rotina_nome, h.nome as host_nome,
+        // Usa uma abordagem mais simples com GROUP BY
+        $sql = "SELECT e.id, e.rotina_id, e.cliente_id, e.host_id, e.status, 
+                       e.data_inicio, e.data_fim, e.tamanho_bytes, e.destino,
+                       e.mensagem_erro, e.detalhes, e.created_at,
+                       r.nome as rotina_nome, h.nome as host_nome,
                        c.nome as cliente_nome, c.identificador as cliente_identificador
                 FROM execucoes_backup e
                 INNER JOIN (
-                    SELECT rotina_id, MAX(data_inicio) as max_data
+                    SELECT rotina_id, MAX(id) as max_id
                     FROM execucoes_backup
                     GROUP BY rotina_id
-                ) latest ON e.rotina_id = latest.rotina_id AND e.data_inicio = latest.max_data
+                ) latest ON e.id = latest.max_id
                 LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
                 LEFT JOIN hosts h ON e.host_id = h.id
                 LEFT JOIN clientes c ON e.cliente_id = c.id
-                WHERE r.ativo = 1
+                WHERE r.ativo = 1 OR r.id IS NULL
                 ORDER BY e.data_inicio DESC";
         
-        return \App\Database::fetchAll($sql);
+        return \App\Database::fetchAll($sql) ?: [];
     }
 
     /**
@@ -242,14 +246,16 @@ class ExecucaoBackup extends Model
                     SUM(CASE WHEN e.status = 'executando' THEN 1 ELSE 0 END) as executando
                 FROM execucoes_backup e
                 INNER JOIN (
-                    SELECT rotina_id, MAX(data_inicio) as max_data
+                    SELECT rotina_id, MAX(id) as max_id
                     FROM execucoes_backup
                     GROUP BY rotina_id
-                ) latest ON e.rotina_id = latest.rotina_id AND e.data_inicio = latest.max_data
+                ) latest ON e.id = latest.max_id
                 LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
-                WHERE r.ativo = 1";
+                WHERE r.ativo = 1 OR r.id IS NULL";
         
-        return \App\Database::fetch($sql) ?? [
+        $result = \App\Database::fetch($sql);
+        
+        return $result ?: [
             'total' => 0,
             'sucesso' => 0,
             'falha' => 0,
@@ -274,20 +280,14 @@ class ExecucaoBackup extends Model
                     MAX(e.data_inicio) as ultima_execucao
                 FROM clientes c
                 LEFT JOIN rotinas_backup r ON c.id = r.cliente_id AND r.ativo = 1
-                LEFT JOIN (
-                    SELECT e1.*
-                    FROM execucoes_backup e1
-                    INNER JOIN (
-                        SELECT rotina_id, MAX(data_inicio) as max_data
-                        FROM execucoes_backup
-                        GROUP BY rotina_id
-                    ) e2 ON e1.rotina_id = e2.rotina_id AND e1.data_inicio = e2.max_data
-                ) e ON r.id = e.rotina_id
+                LEFT JOIN execucoes_backup e ON r.id = e.rotina_id AND e.id = (
+                    SELECT MAX(e2.id) FROM execucoes_backup e2 WHERE e2.rotina_id = r.id
+                )
                 WHERE c.ativo = 1
                 GROUP BY c.id, c.nome, c.identificador
                 ORDER BY c.nome";
         
-        return \App\Database::fetchAll($sql);
+        return \App\Database::fetchAll($sql) ?: [];
     }
 
     /**
