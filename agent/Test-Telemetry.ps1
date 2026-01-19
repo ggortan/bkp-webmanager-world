@@ -37,7 +37,7 @@ Write-Host ""
 
 # 2. Testa conectividade básica
 Write-Host "[2/5] Testando conectividade..." -ForegroundColor Yellow
-$pingUrl = "$($config.api_url.TrimEnd('/'))/ping.php"
+$pingUrl = "$($config.api_url.TrimEnd('/'))/api/status"
 try {
     $pingResponse = Invoke-WebRequest -Uri $pingUrl -Method GET -TimeoutSec 10 -UseBasicParsing
     Write-Host "  Ping OK - Status: $($pingResponse.StatusCode)" -ForegroundColor Green

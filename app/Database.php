@@ -125,6 +125,14 @@ class Database
     }
 
     /**
+     * Executa uma query (alias para query, usado para INSERT/UPDATE/DELETE com SQL puro)
+     */
+    public static function execute(string $sql, array $params = []): \PDOStatement
+    {
+        return self::query($sql, $params);
+    }
+
+    /**
      * Remove registros
      */
     public static function delete(string $table, string $where, array $params = []): int

@@ -468,7 +468,13 @@ class ApiBackupController extends Controller
     private function aplicarRetencaoTelemetria(int $hostId): void
     {
         try {
-            $diasRetencao = (int) (\App\Models\Configuracao::get('dias_retencao_telemetria') ?? 0);
+            // Tenta obter configuração de retenção, se falhar assume 0 (manter sempre)
+            $diasRetencao = 0;
+            try {
+                $diasRetencao = (int) (\App\Models\Configuracao::get('dias_retencao_telemetria') ?? 0);
+            } catch (\Exception $e) {
+                // Tabela de configurações pode não existir
+            }
             
             // Se retenção é 0, não deleta nada (manter sempre)
             if ($diasRetencao <= 0) {
