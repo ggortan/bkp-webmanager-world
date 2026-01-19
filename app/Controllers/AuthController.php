@@ -22,10 +22,14 @@ class AuthController extends Controller
      */
     public function login(): void
     {
+        // Se já está autenticado, vai direto para o dashboard
         if ($this->authService->isAuthenticated()) {
             $this->redirect('/dashboard');
             return;
         }
+        
+        // Limpa qualquer state OAuth anterior para evitar conflitos
+        unset($_SESSION['oauth_state']);
         
         $this->data['title'] = 'Login';
         $this->view('auth/login', $this->data);
@@ -62,6 +66,7 @@ class AuthController extends Controller
             }
             
             if (empty($code)) {
+                LogService::warning('auth', 'Código de autorização vazio no callback');
                 $this->flash('error', 'Código de autorização não recebido');
                 $this->redirect('/login');
                 return;
@@ -86,15 +91,20 @@ class AuthController extends Controller
             $redirectTo = $_SESSION['redirect_after_login'] ?? '/dashboard';
             unset($_SESSION['redirect_after_login']);
             
-            // Sessão já foi gravada no AuthService::login()
+            LogService::info('auth', 'Login bem sucedido, redirecionando', [
+                'usuario_id' => $user['id'],
+                'redirect_to' => $redirectTo
+            ]);
+            
             $this->redirect($redirectTo);
             
         } catch (\Exception $e) {
             LogService::error('auth', 'Exceção no callback', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            $this->flash('error', 'Erro durante a autenticação. Tente novamente.');
+            $this->flash('error', 'Erro durante a autenticação: ' . $e->getMessage());
             $this->redirect('/login');
         }
     }

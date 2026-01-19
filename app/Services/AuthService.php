@@ -25,8 +25,22 @@ class AuthService
     {
         $azure = $this->config['azure'];
         
+        // Gera state para proteção CSRF
         $state = bin2hex(random_bytes(16));
+        
+        // Garante que a sessão está ativa
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        
+        // Salva o state na sessão
         $_SESSION['oauth_state'] = $state;
+        
+        // Log para debug
+        LogService::info('auth', 'Iniciando fluxo OAuth', [
+            'state' => $state,
+            'session_id' => session_id()
+        ]);
         
         $params = [
             'client_id' => $azure['client_id'],
@@ -34,7 +48,9 @@ class AuthService
             'redirect_uri' => $azure['redirect_uri'],
             'response_mode' => 'query',
             'scope' => implode(' ', $azure['scopes']),
-            'state' => $state
+            'state' => $state,
+            // Prompt=login força nova autenticação (opcional)
+            // 'prompt' => 'login'
         ];
         
         return $azure['authorize_url'] . '?' . http_build_query($params);
@@ -43,13 +59,28 @@ class AuthService
     /**
      * Processa callback do Azure AD
      */
-    public function handleCallback(string $code, string $state): ?array
+    public function handleCallback(string $code, ?string $state): ?array
     {
-        // Valida state
-        if (empty($_SESSION['oauth_state']) || $state !== $_SESSION['oauth_state']) {
-            throw new \RuntimeException('Estado inválido');
+        // Valida state (proteção contra CSRF)
+        $storedState = $_SESSION['oauth_state'] ?? null;
+        
+        // Log para debug
+        LogService::info('auth', 'OAuth callback recebido', [
+            'has_code' => !empty($code),
+            'state_received' => $state,
+            'state_stored' => $storedState,
+            'session_id' => session_id()
+        ]);
+        
+        if (empty($storedState) || $state !== $storedState) {
+            LogService::warning('auth', 'Estado OAuth inválido', [
+                'state_received' => $state,
+                'state_stored' => $storedState
+            ]);
+            throw new \RuntimeException('Estado inválido - sessão pode ter expirado. Tente novamente.');
         }
         
+        // Limpa o state após uso
         unset($_SESSION['oauth_state']);
         
         // Troca code por token
@@ -147,18 +178,13 @@ class AuthService
      */
     public function login(array $user): void
     {
-        // Limpa dados de sessão anterior (exceto flash messages)
-        $flash = $_SESSION['flash'] ?? null;
-        
-        // Regenera ID da sessão ANTES de definir os dados (segurança e persistência)
-        session_regenerate_id(true);
-        
-        // Restaura flash messages se existiam
-        if ($flash) {
-            $_SESSION['flash'] = $flash;
+        // Regenera ID da sessão ANTES de definir os dados (segurança)
+        // Isso também evita fixação de sessão
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
         }
         
-        // Define os dados do usuário na nova sessão
+        // Define os dados do usuário na sessão
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user'] = [
             'id' => $user['id'],
@@ -172,10 +198,6 @@ class AuthService
         // Marca a sessão como iniciada agora (evita regeneração imediata no index.php)
         $_SESSION['last_regeneration'] = time();
         $_SESSION['login_time'] = time();
-        
-        // Força gravação da sessão para garantir persistência
-        session_write_close();
-        session_start();
         
         // Atualiza último login
         Usuario::updateLastLogin($user['id']);
