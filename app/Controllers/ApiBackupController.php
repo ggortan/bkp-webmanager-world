@@ -221,12 +221,32 @@ class ApiBackupController extends Controller
         // Obtém dados do body
         $json = file_get_contents('php://input');
         
+        // Detecta e converte encoding se necessário (UTF-16 do Windows para UTF-8)
+        $encoding = mb_detect_encoding($json, ['UTF-8', 'UTF-16LE', 'UTF-16BE', 'ASCII'], true);
+        if ($encoding && $encoding !== 'UTF-8' && $encoding !== 'ASCII') {
+            $json = mb_convert_encoding($json, 'UTF-8', $encoding);
+        }
+        
+        // Remove BOM (Byte Order Mark) se presente - comum em UTF-8 do Windows/PowerShell
+        $json = preg_replace('/^\xEF\xBB\xBF/', '', $json);
+        
+        // Remove também BOM UTF-16 LE/BE se presente
+        $json = preg_replace('/^\xFF\xFE/', '', $json);
+        $json = preg_replace('/^\xFE\xFF/', '', $json);
+        
+        // Remove caracteres NULL que podem vir de UTF-16
+        $json = str_replace("\0", '', $json);
+        
+        // Trim de espaços e caracteres invisíveis
+        $json = trim($json);
+        
         // Log para debug
         LogService::log('debug', 'api', 'Telemetria recebida (raw)', [
             'cliente_id' => $cliente['id'],
             'content_length' => strlen($json),
             'content_type' => $_SERVER['CONTENT_TYPE'] ?? 'not set',
-            'json_preview' => substr($json, 0, 200)
+            'json_preview' => substr($json, 0, 200),
+            'first_bytes_hex' => bin2hex(substr($json, 0, 10))
         ]);
         
         // Verifica se o body está vazio
@@ -247,17 +267,26 @@ class ApiBackupController extends Controller
         
         // Tenta decodificar JSON
         $data = json_decode($json, true);
+        $jsonError = json_last_error();
         
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        // Verifica se houve erro OU se resultado é null/não é array
+        if ($jsonError !== JSON_ERROR_NONE || !is_array($data)) {
+            $errorMsg = $jsonError !== JSON_ERROR_NONE 
+                ? json_last_error_msg() 
+                : 'JSON decodificou para null ou tipo inválido';
+            
             LogService::log('error', 'api', 'JSON inválido na telemetria', [
                 'cliente_id' => $cliente['id'],
-                'json_error' => json_last_error_msg(),
-                'raw_preview' => substr($json, 0, 500)
+                'json_error_code' => $jsonError,
+                'json_error' => $errorMsg,
+                'data_type' => gettype($data),
+                'raw_preview' => substr($json, 0, 500),
+                'first_bytes_hex' => bin2hex(substr($json, 0, 20))
             ]);
             
             $this->json([
                 'success' => false,
-                'error' => 'JSON inválido: ' . json_last_error_msg(),
+                'error' => 'JSON inválido: ' . $errorMsg,
                 'status' => 400
             ], 400);
             return;

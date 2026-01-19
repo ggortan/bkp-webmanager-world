@@ -99,6 +99,10 @@ $payload = @{
 
 $jsonBody = $payload | ConvertTo-Json -Depth 10 -Compress
 
+# Garante encoding UTF-8 (PowerShell pode usar UTF-16 por padrão)
+$utf8Encoding = [System.Text.Encoding]::UTF8
+$bodyBytes = $utf8Encoding.GetBytes($jsonBody)
+
 Write-Host "  Payload criado:" -ForegroundColor Gray
 Write-Host "    host_name: $($payload.host_name)" -ForegroundColor Gray
 Write-Host "    hostname: $($payload.hostname)" -ForegroundColor Gray
@@ -117,14 +121,14 @@ $telemetryUrl = "$($config.api_url.TrimEnd('/'))/api/telemetry"
 Write-Host "  URL: $telemetryUrl" -ForegroundColor Gray
 
 $sendHeaders = @{
-    'Content-Type' = 'application/json'
+    'Content-Type' = 'application/json; charset=utf-8'
     'X-API-Key' = $config.api_token
     'Authorization' = "Bearer $($config.api_token)"
     'Accept' = 'application/json'
 }
 
 try {
-    $response = Invoke-WebRequest -Uri $telemetryUrl -Method POST -Headers $sendHeaders -Body $jsonBody -ContentType 'application/json' -TimeoutSec 30 -UseBasicParsing
+    $response = Invoke-WebRequest -Uri $telemetryUrl -Method POST -Headers $sendHeaders -Body $bodyBytes -ContentType 'application/json; charset=utf-8' -TimeoutSec 30 -UseBasicParsing
     
     Write-Host "  SUCCESS - HTTP $($response.StatusCode)" -ForegroundColor Green
     Write-Host ""

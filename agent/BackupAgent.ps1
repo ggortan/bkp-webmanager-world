@@ -173,7 +173,11 @@ function Send-BackupDataToAPI {
         "Content-Type" = "application/json; charset=utf-8"
     }
     
-    $body = $BackupData | ConvertTo-Json -Depth 10 -Compress
+    $jsonBody = $BackupData | ConvertTo-Json -Depth 10 -Compress
+    
+    # Garante encoding UTF-8 (PowerShell pode usar UTF-16 por padrão)
+    $utf8Encoding = [System.Text.Encoding]::UTF8
+    $body = $utf8Encoding.GetBytes($jsonBody)
     
     $attempt = 0
     $success = $false

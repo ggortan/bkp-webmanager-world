@@ -169,14 +169,18 @@ function Send-TelemetryData {
     
     $jsonBody = $body | ConvertTo-Json -Depth 5
     
+    # Garante encoding UTF-8 (PowerShell pode usar UTF-16 por padrão)
+    $utf8Encoding = [System.Text.Encoding]::UTF8
+    $bodyBytes = $utf8Encoding.GetBytes($jsonBody)
+    
     $headers = @{
-        'Content-Type' = 'application/json'
+        'Content-Type' = 'application/json; charset=utf-8'
         'Authorization' = "Bearer $Token"
         'Accept' = 'application/json'
     }
     
     try {
-        $response = Invoke-RestMethod -Uri $endpoint -Method POST -Headers $headers -Body $jsonBody -TimeoutSec 30
+        $response = Invoke-RestMethod -Uri $endpoint -Method POST -Headers $headers -Body $bodyBytes -ContentType 'application/json; charset=utf-8' -TimeoutSec 30
         
         if ($response.success) {
             Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Telemetria enviada com sucesso - Host: $($response.host_name), Status: $($response.status)" -ForegroundColor Green

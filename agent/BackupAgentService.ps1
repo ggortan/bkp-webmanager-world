@@ -370,14 +370,18 @@ function Send-Telemetry {
     # Log do payload antes de converter
     Write-ServiceLog "Payload: host_name=$($payload.host_name), hostname=$($payload.hostname)" -Level DEBUG
     
-    # Converte para JSON como string simples
+    # Converte para JSON como string simples e garante encoding UTF-8
     $body = $payload | ConvertTo-Json -Depth 10 -Compress
+    
+    # Garante que o body é UTF-8 (PowerShell pode usar UTF-16 por padrão)
+    $utf8Encoding = [System.Text.Encoding]::UTF8
+    $bodyBytes = $utf8Encoding.GetBytes($body)
     
     Write-ServiceLog "JSON Body (preview): $($body.Substring(0, [Math]::Min(200, $body.Length)))..." -Level DEBUG
     
     # Suporta ambos os métodos de autenticação
     $headers = @{
-        'Content-Type' = 'application/json'
+        'Content-Type' = 'application/json; charset=utf-8'
         'Authorization' = "Bearer $($script:Config.api_token)"
         'X-API-Key' = $script:Config.api_token
         'Accept' = 'application/json'
@@ -386,8 +390,8 @@ function Send-Telemetry {
     Write-ServiceLog "Endpoint: $endpoint" -Level DEBUG
     
     try {
-        # Usa Invoke-WebRequest para ter mais controle
-        $webResponse = Invoke-WebRequest -Uri $endpoint -Method POST -Headers $headers -Body $body -ContentType 'application/json' -TimeoutSec 30 -UseBasicParsing
+        # Usa Invoke-WebRequest para ter mais controle - envia bytes UTF-8
+        $webResponse = Invoke-WebRequest -Uri $endpoint -Method POST -Headers $headers -Body $bodyBytes -ContentType 'application/json; charset=utf-8' -TimeoutSec 30 -UseBasicParsing
         
         $response = $webResponse.Content | ConvertFrom-Json
         
