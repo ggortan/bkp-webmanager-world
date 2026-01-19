@@ -5,11 +5,16 @@
     # Exemplo: /world/bkpmng/ se a aplicação estiver em https://domain.com/world/bkpmng/
     RewriteBase /world/bkpmng/
     
-    # Se for um arquivo ou diretório real, deixa passar
+    # Se o arquivo existir na pasta public, serve diretamente
+    RewriteCond %{REQUEST_URI} !^/world/bkpmng/public/
+    RewriteCond %{DOCUMENT_ROOT}/world/bkpmng/public%{REQUEST_URI} -f
+    RewriteRule ^(.*)$ public/$1 [L]
+    
+    # Se for um arquivo ou diretório real na raiz, deixa passar
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     
-    # Redireciona para public/index.php
+    # Redireciona tudo para public/index.php
     RewriteRule ^(.*)$ public/index.php [QSA,L]
 </IfModule>
 
