@@ -63,13 +63,27 @@ $isApiRequest = preg_match('#/api(/|$)#', $_SERVER['REQUEST_URI'] ?? '');
 if (!$isApiRequest && session_status() === PHP_SESSION_NONE) {
     $sessionConfig = $appConfig['session'];
     
+    // Determina o path do cookie baseado na URL da aplicação
+    $cookiePath = '/';
+    if (isset($config['app']['url'])) {
+        $parsedPath = parse_url($config['app']['url'], PHP_URL_PATH);
+        if ($parsedPath && $parsedPath !== '/') {
+            $cookiePath = rtrim($parsedPath, '/') . '/';
+        }
+    }
+    
+    // Verifica HTTPS considerando proxy reverso
+    $isHttps = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+        || (isset($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on');
+    
     session_name($sessionConfig['name']);
     
     session_set_cookie_params([
         'lifetime' => $sessionConfig['lifetime'] * 60,
-        'path' => '/',
+        'path' => $cookiePath,
         'domain' => '',
-        'secure' => $sessionConfig['secure'] && isset($_SERVER['HTTPS']),
+        'secure' => $sessionConfig['secure'] && $isHttps,
         'httponly' => $sessionConfig['httponly'],
         'samesite' => $sessionConfig['samesite']
     ]);

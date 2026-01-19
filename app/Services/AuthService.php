@@ -147,6 +147,10 @@ class AuthService
      */
     public function login(array $user): void
     {
+        // Regenera ID da sessão ANTES de definir os dados (segurança e persistência)
+        session_regenerate_id(true);
+        
+        // Define os dados do usuário na nova sessão
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user'] = [
             'id' => $user['id'],
@@ -157,8 +161,8 @@ class AuthService
             'role' => $this->getRoleName($user['role_id'])
         ];
         
-        // Regenera ID da sessão
-        session_regenerate_id(true);
+        // Atualiza timestamp de regeneração para evitar regeneração imediata
+        $_SESSION['last_regeneration'] = time();
         
         // Atualiza último login
         Usuario::updateLastLogin($user['id']);

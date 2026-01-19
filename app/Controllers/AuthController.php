@@ -86,6 +86,9 @@ class AuthController extends Controller
             $redirectTo = $_SESSION['redirect_after_login'] ?? '/dashboard';
             unset($_SESSION['redirect_after_login']);
             
+            // Garante que a sessão seja gravada antes do redirecionamento
+            session_write_close();
+            
             $this->redirect($redirectTo);
             
         } catch (\Exception $e) {
