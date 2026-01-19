@@ -106,11 +106,28 @@ function Get-VeeamBackupJobs {
         
         foreach ($job in $jobs) {
             try {
-                # Obtém a última sessão do job
-                $lastSession = Get-VBRBackupSession | 
-                    Where-Object { $_.JobId -eq $job.Id } | 
-                    Sort-Object EndTime -Descending | 
-                    Select-Object -First 1
+                $lastSession = $null
+                $jobName = $job.Name
+                
+                # Tenta obter a última sessão - método varia por tipo de job
+                try {
+                    # Para jobs tradicionais (VM backup)
+                    $lastSession = Get-VBRBackupSession -ErrorAction SilentlyContinue | 
+                        Where-Object { $_.JobId -eq $job.Id -or $_.JobName -eq $jobName } | 
+                        Sort-Object EndTime -Descending | 
+                        Select-Object -First 1
+                }
+                catch { }
+                
+                # Para Computer Backup Jobs (Veeam 12+), tenta Get-VBRComputerBackupJobSession
+                if (-not $lastSession -and (Get-Command Get-VBRComputerBackupJobSession -ErrorAction SilentlyContinue)) {
+                    try {
+                        $lastSession = Get-VBRComputerBackupJobSession -Name $jobName -ErrorAction SilentlyContinue | 
+                            Sort-Object EndTime -Descending | 
+                            Select-Object -First 1
+                    }
+                    catch { }
+                }
                 
                 if ($null -eq $lastSession) {
                     continue

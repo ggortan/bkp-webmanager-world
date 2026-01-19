@@ -518,12 +518,43 @@ function Get-VeeamBackups {
         
         foreach ($job in $jobs) {
             try {
-                $lastSession = $job.FindLastSession()
+                $lastSession = $null
+                $jobName = $job.Name
+                
+                # Tenta obter a última sessão - método varia por tipo de job
+                try {
+                    # Para jobs tradicionais (VM backup)
+                    if ($job.PSObject.Methods.Name -contains 'FindLastSession') {
+                        $lastSession = $job.FindLastSession()
+                    }
+                }
+                catch { }
+                
+                # Se não conseguiu, tenta via Get-VBRBackupSession
+                if (-not $lastSession) {
+                    try {
+                        $lastSession = Get-VBRBackupSession -ErrorAction SilentlyContinue | 
+                            Where-Object { $_.JobId -eq $job.Id -or $_.JobName -eq $jobName } | 
+                            Sort-Object EndTime -Descending | 
+                            Select-Object -First 1
+                    }
+                    catch { }
+                }
+                
+                # Para Computer Backup Jobs (Veeam 12+), tenta Get-VBRComputerBackupJobSession
+                if (-not $lastSession -and (Get-Command Get-VBRComputerBackupJobSession -ErrorAction SilentlyContinue)) {
+                    try {
+                        $lastSession = Get-VBRComputerBackupJobSession -Name $jobName -ErrorAction SilentlyContinue | 
+                            Sort-Object EndTime -Descending | 
+                            Select-Object -First 1
+                    }
+                    catch { }
+                }
                 
                 if ($lastSession) {
                     $backup = @{
                         source = 'veeam'
-                        job_name = $job.Name
+                        job_name = $jobName
                         start_time = $lastSession.CreationTime
                         end_time = $lastSession.EndTime
                         status = switch ($lastSession.Result) {
@@ -538,9 +569,12 @@ function Get-VeeamBackups {
                     
                     # Tenta obter tamanho de várias formas
                     try {
-                        $taskSessions = $lastSession.GetTaskSessions()
+                        $taskSessions = $null
+                        if ($lastSession.PSObject.Methods.Name -contains 'GetTaskSessions') {
+                            $taskSessions = $lastSession.GetTaskSessions()
+                        }
+                        
                         if ($taskSessions) {
-                            # Tenta diferentes propriedades dependendo da versão do Veeam
                             $totalSize = 0
                             foreach ($task in $taskSessions) {
                                 if ($task.Progress -and $task.Progress.TotalSize) {
