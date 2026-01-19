@@ -208,6 +208,89 @@ class ExecucaoBackup extends Model
     }
 
     /**
+     * Obtém a última execução de cada rotina ativa
+     */
+    public static function getLatestByRotina(): array
+    {
+        $sql = "SELECT e.*, r.nome as rotina_nome, h.nome as host_nome,
+                       c.nome as cliente_nome, c.identificador as cliente_identificador
+                FROM execucoes_backup e
+                INNER JOIN (
+                    SELECT rotina_id, MAX(data_inicio) as max_data
+                    FROM execucoes_backup
+                    GROUP BY rotina_id
+                ) latest ON e.rotina_id = latest.rotina_id AND e.data_inicio = latest.max_data
+                LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
+                LEFT JOIN hosts h ON e.host_id = h.id
+                LEFT JOIN clientes c ON e.cliente_id = c.id
+                WHERE r.ativo = 1
+                ORDER BY e.data_inicio DESC";
+        
+        return \App\Database::fetchAll($sql);
+    }
+
+    /**
+     * Obtém estatísticas baseadas na última execução de cada rotina
+     */
+    public static function getStatsLatest(): array
+    {
+        $sql = "SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN e.status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
+                    SUM(CASE WHEN e.status = 'falha' THEN 1 ELSE 0 END) as falha,
+                    SUM(CASE WHEN e.status = 'alerta' THEN 1 ELSE 0 END) as alerta,
+                    SUM(CASE WHEN e.status = 'executando' THEN 1 ELSE 0 END) as executando
+                FROM execucoes_backup e
+                INNER JOIN (
+                    SELECT rotina_id, MAX(data_inicio) as max_data
+                    FROM execucoes_backup
+                    GROUP BY rotina_id
+                ) latest ON e.rotina_id = latest.rotina_id AND e.data_inicio = latest.max_data
+                LEFT JOIN rotinas_backup r ON e.rotina_id = r.id
+                WHERE r.ativo = 1";
+        
+        return \App\Database::fetch($sql) ?? [
+            'total' => 0,
+            'sucesso' => 0,
+            'falha' => 0,
+            'alerta' => 0,
+            'executando' => 0
+        ];
+    }
+
+    /**
+     * Obtém estatísticas por cliente baseadas na última execução de cada rotina
+     */
+    public static function getStatsByClienteLatest(): array
+    {
+        $sql = "SELECT 
+                    c.id as cliente_id,
+                    c.nome as cliente_nome,
+                    c.identificador,
+                    COUNT(e.id) as total,
+                    SUM(CASE WHEN e.status = 'sucesso' THEN 1 ELSE 0 END) as sucesso,
+                    SUM(CASE WHEN e.status = 'falha' THEN 1 ELSE 0 END) as falha,
+                    SUM(CASE WHEN e.status = 'alerta' THEN 1 ELSE 0 END) as alerta,
+                    MAX(e.data_inicio) as ultima_execucao
+                FROM clientes c
+                LEFT JOIN rotinas_backup r ON c.id = r.cliente_id AND r.ativo = 1
+                LEFT JOIN (
+                    SELECT e1.*
+                    FROM execucoes_backup e1
+                    INNER JOIN (
+                        SELECT rotina_id, MAX(data_inicio) as max_data
+                        FROM execucoes_backup
+                        GROUP BY rotina_id
+                    ) e2 ON e1.rotina_id = e2.rotina_id AND e1.data_inicio = e2.max_data
+                ) e ON r.id = e.rotina_id
+                WHERE c.ativo = 1
+                GROUP BY c.id, c.nome, c.identificador
+                ORDER BY c.nome";
+        
+        return \App\Database::fetchAll($sql);
+    }
+
+    /**
      * Filtra execuções com paginação
      */
     public static function filter(array $filters, int $page = 1, int $perPage = 20): array

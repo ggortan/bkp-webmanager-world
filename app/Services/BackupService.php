@@ -214,17 +214,34 @@ class BackupService
     /**
      * Obtém resumo do dashboard
      */
-    public function getDashboardData(): array
+    public function getDashboardData(?int $dias = null): array
     {
+        // Se dias for null, usa as últimas execuções de cada rotina
+        if ($dias === null) {
+            return [
+                'stats' => ExecucaoBackup::getStatsLatest(),
+                'stats_periodo' => ExecucaoBackup::getStatsByPeriod(7),
+                'stats_clientes' => ExecucaoBackup::getStatsByClienteLatest(),
+                'execucoes_recentes' => ExecucaoBackup::getLatestByRotina(),
+                'total_clientes' => Cliente::count(['ativo' => 1]),
+                'total_hosts' => \App\Database::fetch(
+                    "SELECT COUNT(*) as total FROM hosts WHERE ativo = 1"
+                )['total'] ?? 0,
+                'periodo' => 'latest'
+            ];
+        }
+        
+        // Caso contrário, usa o período em dias
         return [
-            'stats' => ExecucaoBackup::getStats(30),
-            'stats_periodo' => ExecucaoBackup::getStatsByPeriod(7),
-            'stats_clientes' => ExecucaoBackup::getStatsByCliente(30),
-            'execucoes_recentes' => ExecucaoBackup::getRecent(10),
+            'stats' => ExecucaoBackup::getStats($dias),
+            'stats_periodo' => ExecucaoBackup::getStatsByPeriod($dias),
+            'stats_clientes' => ExecucaoBackup::getStatsByCliente($dias),
+            'execucoes_recentes' => ExecucaoBackup::getRecent(20),
             'total_clientes' => Cliente::count(['ativo' => 1]),
             'total_hosts' => \App\Database::fetch(
                 "SELECT COUNT(*) as total FROM hosts WHERE ativo = 1"
-            )['total'] ?? 0
+            )['total'] ?? 0,
+            'periodo' => $dias
         ];
     }
 

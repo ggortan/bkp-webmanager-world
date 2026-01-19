@@ -25,7 +25,15 @@ class DashboardController extends Controller
      */
     public function index(): void
     {
-        $dashboardData = $this->backupService->getDashboardData();
+        // Obtém o período da query string (null = últimas execuções, 7 = 7 dias, 30 = 30 dias)
+        $periodo = isset($_GET['periodo']) ? (int)$_GET['periodo'] : null;
+        
+        // Valida o período
+        if ($periodo !== null && !in_array($periodo, [7, 30])) {
+            $periodo = null; // Volta para o padrão (últimas execuções)
+        }
+        
+        $dashboardData = $this->backupService->getDashboardData($periodo);
         
         // Adiciona resumo de status dos hosts
         $hostStatusSummary = \App\Models\Host::statusSummary();
@@ -36,8 +44,9 @@ class DashboardController extends Controller
         $this->data['stats_clientes'] = $dashboardData['stats_clientes'];
         $this->data['execucoes_recentes'] = $dashboardData['execucoes_recentes'];
         $this->data['total_clientes'] = $dashboardData['total_clientes'];
-        $this->data['total_servidores'] = $dashboardData['total_servidores'];
+        $this->data['total_servidores'] = $dashboardData['total_servidores'] ?? $dashboardData['total_hosts'] ?? 0;
         $this->data['host_status'] = $hostStatusSummary;
+        $this->data['periodo_atual'] = $dashboardData['periodo'];
         
         $this->render('dashboard/index', $this->data);
     }

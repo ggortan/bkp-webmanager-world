@@ -256,10 +256,38 @@ function ConvertTo-StandardBackupFormat {
     )
     
     $hostname = [System.Net.Dns]::GetHostName()
-    $ipAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" } | Select-Object -First 1).IPAddress
+    $ipAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" -and $_.PrefixOrigin -in @('Dhcp', 'Manual') } | Select-Object -First 1).IPAddress
     $os = (Get-CimInstance Win32_OperatingSystem).Caption
+    $osInfo = Get-CimInstance Win32_OperatingSystem
     
     $rotinaNome = if ($Job.TaskName) { $Job.TaskName } else { $DefaultRotina }
+    
+    # Coleta informações adicionais do sistema
+    $macAddress = $null
+    $externalIp = $null
+    $uptimeHours = $null
+    $psVersion = $null
+    $isVirtual = $null
+    
+    try {
+        # MAC Address
+        $macAddress = (Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -notlike '*Loopback*' } | Select-Object -First 1).MacAddress
+        
+        # Uptime
+        $uptimeHours = [math]::Round(((Get-Date) - $osInfo.LastBootUpTime).TotalHours, 2)
+        
+        # PowerShell Version
+        $psVersion = $PSVersionTable.PSVersion.ToString()
+        
+        # Virtual ou Physical
+        $computerSystem = Get-CimInstance Win32_ComputerSystem
+        $isVirtual = $computerSystem.Model -match 'Virtual|VMware|VirtualBox|Hyper-V|KVM|Xen|QEMU'
+        
+        # IP Externo (timeout curto para não atrasar)
+        try {
+            $externalIp = (Invoke-WebRequest -Uri 'https://api.ipify.org' -TimeoutSec 5 -UseBasicParsing).Content
+        } catch { }
+    } catch { }
     
     # Formato padrão da API (usando routine_key)
     $standardFormat = @{
@@ -271,7 +299,12 @@ function ConvertTo-StandardBackupFormat {
             nome = $ServerName
             hostname = $hostname
             ip = $ipAddress
+            mac = $macAddress
+            ip_externo = $externalIp
             sistema_operacional = $os
+            uptime_hours = $uptimeHours
+            powershell_version = $psVersion
+            is_virtual = $isVirtual
         }
         detalhes = @{
             source = $Job.Source
@@ -297,13 +330,98 @@ function ConvertTo-StandardBackupFormat {
         $standardFormat.destino = $Job.Details.BackupTarget
     }
     
+    # Coleta informações detalhadas do Windows Server Backup
+    try {
+        $wbSummary = Get-WBSummary -ErrorAction SilentlyContinue
+        if ($wbSummary) {
+            $standardFormat.detalhes['BackupTarget'] = $wbSummary.LastBackupTarget
+            $standardFormat.detalhes['NextBackupTime'] = if ($wbSummary.NextBackupTime) { $wbSummary.NextBackupTime.ToString("yyyy-MM-dd HH:mm") } else { $null }
+            $standardFormat.detalhes['NumberOfVersions'] = $wbSummary.NumberOfVersions
+            
+            # Obtém informações do último backup
+            $lastBackup = Get-WBBackupSet -ErrorAction SilentlyContinue | Sort-Object BackupTime -Descending | Select-Object -First 1
+            if ($lastBackup) {
+                $standardFormat.detalhes['tipo_backup'] = if ($lastBackup.BackupTarget -match 'Disk') { 'Disco' } else { 'Rede' }
+                
+                # Itens do backup
+                $backupItems = @()
+                foreach ($volume in $lastBackup.Volume) {
+                    $backupItems += @{
+                        name = $volume.MountPath
+                        type = 'Volume'
+                        status = 'Completed Successfully'
+                    }
+                }
+                
+                if ($lastBackup.SystemState) {
+                    $backupItems += @{ name = 'SystemState'; type = 'SystemState'; status = 'Completed Successfully' }
+                }
+                if ($lastBackup.BareMetalRecovery) {
+                    $backupItems += @{ name = 'BareMetalRecovery'; type = 'BareMetalRecovery'; status = 'Completed Successfully' }
+                }
+                
+                if ($backupItems.Count -gt 0) {
+                    $standardFormat.detalhes['backup_items'] = $backupItems
+                }
+            }
+        }
+    } catch { }
+    
+    # Coleta uso de mídia/discos
+    try {
+        $mediaUsage = @()
+        $volumes = Get-Volume | Where-Object { $_.DriveLetter -or $_.FileSystemLabel }
+        foreach ($vol in $volumes) {
+            if ($vol.Size -gt 0) {
+                $percentFree = [math]::Round(($vol.SizeRemaining / $vol.Size) * 100, 2)
+                $mediaUsage += @{
+                    Label = if ($vol.FileSystemLabel) { $vol.FileSystemLabel } else { '' }
+                    Volume = if ($vol.DriveLetter) { "$($vol.DriveLetter):\" } else { $vol.Path }
+                    TotalCapacity = "{0:N1} GB" -f ($vol.Size / 1GB)
+                    UsedSpace = "{0:N1} GB" -f (($vol.Size - $vol.SizeRemaining) / 1GB)
+                    FreeSpace = "{0:N1} GB" -f ($vol.SizeRemaining / 1GB)
+                    PercentFree = $percentFree
+                }
+            }
+        }
+        if ($mediaUsage.Count -gt 0) {
+            $standardFormat.detalhes['media_usage'] = $mediaUsage
+        }
+    } catch { }
+    
+    # Coleta VSS Writers
+    try {
+        $vssOutput = vssadmin list writers 2>$null
+        if ($vssOutput) {
+            $vssWriters = @()
+            $currentWriter = @{}
+            foreach ($line in $vssOutput) {
+                if ($line -match "Writer name:\s*'([^']+)'") {
+                    if ($currentWriter.Count -gt 0) { $vssWriters += $currentWriter }
+                    $currentWriter = @{ name = $matches[1]; state = 'Stable'; last_error = 'No error' }
+                }
+                elseif ($line -match "State:\s*\[(\d+)\]\s*(.+)") {
+                    $currentWriter['state'] = $matches[2].Trim()
+                }
+                elseif ($line -match "Last error:\s*(.+)") {
+                    $currentWriter['last_error'] = $matches[1].Trim()
+                }
+            }
+            if ($currentWriter.Count -gt 0) { $vssWriters += $currentWriter }
+            
+            if ($vssWriters.Count -gt 0) {
+                $standardFormat.detalhes['vss_writers'] = $vssWriters
+            }
+        }
+    } catch { }
+    
     # Adiciona mensagem de erro se status for falha ou alerta
     if ($Job.Status -in @("falha", "alerta")) {
         $mensagem = if ($Job.Message) { $Job.Message } elseif ($Job.Details.ResultDescription) { $Job.Details.ResultDescription } else { "Erro desconhecido" }
         $standardFormat.mensagem_erro = $mensagem
     }
     
-    # Adiciona detalhes extras
+    # Adiciona detalhes extras do job
     foreach ($key in $Job.Details.Keys) {
         if ($key -notin @("SizeBytes", "BackupTarget", "ResultDescription")) {
             $standardFormat.detalhes[$key] = $Job.Details[$key]

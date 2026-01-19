@@ -281,10 +281,38 @@ function ConvertTo-StandardVeeamFormat {
     )
     
     $hostname = [System.Net.Dns]::GetHostName()
-    $ipAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" } | Select-Object -First 1).IPAddress
+    $ipAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" -and $_.PrefixOrigin -in @('Dhcp', 'Manual') } | Select-Object -First 1).IPAddress
     $os = (Get-CimInstance Win32_OperatingSystem).Caption
+    $osInfo = Get-CimInstance Win32_OperatingSystem
     
     $tipoBackup = if ($Job.Details.IsFullBackup) { "Completo" } else { "Incremental" }
+    
+    # Coleta informações adicionais do sistema
+    $macAddress = $null
+    $externalIp = $null
+    $uptimeHours = $null
+    $psVersion = $null
+    $isVirtual = $null
+    
+    try {
+        # MAC Address
+        $macAddress = (Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -notlike '*Loopback*' } | Select-Object -First 1).MacAddress
+        
+        # Uptime
+        $uptimeHours = [math]::Round(((Get-Date) - $osInfo.LastBootUpTime).TotalHours, 2)
+        
+        # PowerShell Version
+        $psVersion = $PSVersionTable.PSVersion.ToString()
+        
+        # Virtual ou Physical
+        $computerSystem = Get-CimInstance Win32_ComputerSystem
+        $isVirtual = $computerSystem.Model -match 'Virtual|VMware|VirtualBox|Hyper-V|KVM|Xen|QEMU'
+        
+        # IP Externo (timeout curto para não atrasar)
+        try {
+            $externalIp = (Invoke-WebRequest -Uri 'https://api.ipify.org' -TimeoutSec 5 -UseBasicParsing).Content
+        } catch { }
+    } catch { }
     
     # Formato padrão da API (usando routine_key)
     $standardFormat = @{
@@ -298,19 +326,31 @@ function ConvertTo-StandardVeeamFormat {
             nome = $ServerName
             hostname = $hostname
             ip = $ipAddress
+            mac = $macAddress
+            ip_externo = $externalIp
             sistema_operacional = $os
+            uptime_hours = $uptimeHours
+            powershell_version = $psVersion
+            is_virtual = $isVirtual
         }
         detalhes = @{
-            source = $Job.Source
+            source = "Veeam"
             tipo_backup = $tipoBackup
             job_id = $Job.JobId
             job_type = $Job.JobType
-            backup_size_bytes = $Job.BackupSize
-            objects_count = $Job.ObjectsCount
-            is_full = $Job.Details.IsFullBackup
-            repository = $Job.Details.TargetRepository
-            processed_objects = $Job.Details.ProcessedObjects
-            total_objects = $Job.Details.TotalObjects
+            JobName = $Job.JobName
+            Result = $Job.Result
+            BackupSize = $Job.BackupSize
+            ObjectsCount = $Job.ObjectsCount
+            IsFullBackup = $Job.Details.IsFullBackup
+            IsRetry = $Job.Details.IsRetry
+            TargetRepository = $Job.Details.TargetRepository
+            SessionId = $Job.Details.SessionId
+            SourceSize = $Job.Details.SourceSize
+            TransferedSize = $Job.Details.TransferedSize
+            ProcessedObjects = $Job.Details.ProcessedObjects
+            TotalObjects = $Job.Details.TotalObjects
+            Progress = $Job.Details.Progress
         }
     }
     
@@ -320,14 +360,47 @@ function ConvertTo-StandardVeeamFormat {
     }
     
     # Adiciona mensagem de erro
-    if ($Job.Status -in @("falha", "alerta") -and $Job.ErrorMessage) {
-        $standardFormat.mensagem_erro = $Job.ErrorMessage
+    if ($Job.Status -in @("falha", "alerta")) {
+        if ($Job.ErrorMessage) {
+            $standardFormat.mensagem_erro = $Job.ErrorMessage
+        }
+        if ($Job.Details.FailureMessage) {
+            $standardFormat.detalhes['FailureMessage'] = $Job.Details.FailureMessage
+        }
     }
     
-    # Adiciona lista de VMs processadas
-    if ($Job.Details.ProcessedVMs) {
-        $standardFormat.detalhes.vms = $Job.Details.ProcessedVMs
+    # Adiciona lista de VMs processadas com formato detalhado
+    if ($Job.Details.ProcessedVMs -and $Job.Details.ProcessedVMs.Count -gt 0) {
+        $standardFormat.detalhes['ProcessedVMs'] = $Job.Details.ProcessedVMs
     }
+    
+    # Coleta informações dos repositórios Veeam se disponível
+    try {
+        $connected = Connect-VeeamServer -ErrorAction SilentlyContinue
+        if ($connected) {
+            $repositories = Get-VBRBackupRepository -ErrorAction SilentlyContinue
+            if ($repositories) {
+                $repoInfo = @()
+                foreach ($repo in $repositories) {
+                    try {
+                        $container = $repo.GetContainer()
+                        $repoInfo += @{
+                            Name = $repo.Name
+                            Type = $repo.Type
+                            Path = $repo.Path
+                            TotalSpace = $container.CachedTotalSpace.InBytes
+                            FreeSpace = $container.CachedFreeSpace.InBytes
+                            UsedSpace = $container.CachedTotalSpace.InBytes - $container.CachedFreeSpace.InBytes
+                        }
+                    } catch { }
+                }
+                if ($repoInfo.Count -gt 0) {
+                    $standardFormat.detalhes['Repositories'] = $repoInfo
+                }
+            }
+            Disconnect-VeeamServer -ErrorAction SilentlyContinue
+        }
+    } catch { }
     
     return $standardFormat
 }

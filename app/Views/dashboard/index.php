@@ -1,6 +1,28 @@
+<?php
+$periodoAtual = $periodo_atual ?? 'latest';
+$periodoTexto = match($periodoAtual) {
+    'latest' => 'Últimas Execuções',
+    7 => 'Últimos 7 dias',
+    30 => 'Últimos 30 dias',
+    default => 'Últimas Execuções'
+};
+?>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">Dashboard</h4>
-    <span class="text-muted">Últimos 30 dias</span>
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted me-2">Período:</span>
+        <div class="btn-group" role="group">
+            <a href="<?= path('/') ?>" class="btn btn-sm <?= $periodoAtual === 'latest' ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                Últimas Execuções
+            </a>
+            <a href="<?= path('/') ?>?periodo=7" class="btn btn-sm <?= $periodoAtual === 7 ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                7 dias
+            </a>
+            <a href="<?= path('/') ?>?periodo=30" class="btn btn-sm <?= $periodoAtual === 30 ? 'btn-primary' : 'btn-outline-secondary' ?>">
+                30 dias
+            </a>
+        </div>
+    </div>
 </div>
 
 <!-- Stats Cards -->
@@ -122,6 +144,7 @@
                             <tr>
                                 <th>Cliente</th>
                                 <th class="text-center">Sucesso</th>
+                                <th class="text-center">Alerta</th>
                                 <th class="text-center">Falha</th>
                                 <th class="text-center">Última Exec.</th>
                             </tr>
@@ -129,7 +152,7 @@
                         <tbody>
                             <?php if (empty($stats_clientes)): ?>
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-4">Nenhum cliente cadastrado</td>
+                                <td colspan="5" class="text-center text-muted py-4">Nenhum cliente cadastrado</td>
                             </tr>
                             <?php else: ?>
                                 <?php foreach (array_slice($stats_clientes, 0, 5) as $cliente): ?>
@@ -141,6 +164,9 @@
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-success"><?= $cliente['sucesso'] ?? 0 ?></span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-warning text-dark"><?= $cliente['alerta'] ?? 0 ?></span>
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-danger"><?= $cliente['falha'] ?? 0 ?></span>
@@ -166,7 +192,10 @@
     <div class="col-xl-6">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-clock-history me-2"></i>Últimas Execuções</span>
+                <span>
+                    <i class="bi bi-clock-history me-2"></i>
+                    <?= $periodoAtual === 'latest' ? 'Última Execução por Rotina' : 'Últimas Execuções' ?>
+                </span>
                 <a href="<?= path('/backups') ?>" class="btn btn-sm btn-outline-primary">Ver todas</a>
             </div>
             <div class="card-body p-0">
