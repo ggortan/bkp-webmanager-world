@@ -339,6 +339,10 @@ class ApiBackupController extends Controller
                 $hostId = \App\Models\Host::create($newHostData);
                 $host = \App\Models\Host::find($hostId);
                 
+                if (!$host) {
+                    throw new \RuntimeException("Falha ao criar host: ID {$hostId} não encontrado após inserção");
+                }
+                
                 LogService::api('Host criado via telemetria', [
                     'cliente_id' => $cliente['id'],
                     'host_id' => $hostId,
@@ -381,32 +385,40 @@ class ApiBackupController extends Controller
             if (!empty($data['metrics'])) {
                 $metrics = $data['metrics'];
                 
-                $historicoData = [
-                    'host_id' => $host['id'],
-                    'cliente_id' => $cliente['id'],
-                    'cpu_percent' => $metrics['cpu_percent'] ?? 0,
-                    'memory_percent' => $metrics['memory_percent'] ?? 0,
-                    'disk_percent' => $metrics['disk_percent'] ?? 0,
-                    'uptime_seconds' => $metrics['uptime_seconds'] ?? null,
-                    'data_completa' => json_encode($metrics)
-                ];
-                
-                $sql = "INSERT INTO telemetria_historico 
-                        (host_id, cliente_id, cpu_percent, memory_percent, disk_percent, uptime_seconds, data_completa) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?)";
-                
-                \App\Database::execute($sql, [
-                    $historicoData['host_id'],
-                    $historicoData['cliente_id'],
-                    $historicoData['cpu_percent'],
-                    $historicoData['memory_percent'],
-                    $historicoData['disk_percent'],
-                    $historicoData['uptime_seconds'],
-                    $historicoData['data_completa']
-                ]);
-                
-                // Aplica retenção de dados (se configurado)
-                $this->aplicarRetencaoTelemetria($host['id']);
+                try {
+                    $historicoData = [
+                        'host_id' => $host['id'],
+                        'cliente_id' => $cliente['id'],
+                        'cpu_percent' => $metrics['cpu_percent'] ?? 0,
+                        'memory_percent' => $metrics['memory_percent'] ?? 0,
+                        'disk_percent' => $metrics['disk_percent'] ?? 0,
+                        'uptime_seconds' => $metrics['uptime_seconds'] ?? null,
+                        'data_completa' => json_encode($metrics)
+                    ];
+                    
+                    $sql = "INSERT INTO telemetria_historico 
+                            (host_id, cliente_id, cpu_percent, memory_percent, disk_percent, uptime_seconds, data_completa) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?)";
+                    
+                    \App\Database::execute($sql, [
+                        $historicoData['host_id'],
+                        $historicoData['cliente_id'],
+                        $historicoData['cpu_percent'],
+                        $historicoData['memory_percent'],
+                        $historicoData['disk_percent'],
+                        $historicoData['uptime_seconds'],
+                        $historicoData['data_completa']
+                    ]);
+                    
+                    // Aplica retenção de dados (se configurado)
+                    $this->aplicarRetencaoTelemetria($host['id']);
+                } catch (\Exception $histEx) {
+                    // Log do erro mas não falha o endpoint - a telemetria principal foi salva
+                    LogService::warning('api', 'Falha ao salvar histórico de telemetria', [
+                        'host_id' => $host['id'],
+                        'error' => $histEx->getMessage()
+                    ]);
+                }
             }
             
             // Auto-vincula rotinas sem host a este host (baseado no host_info)
@@ -424,14 +436,29 @@ class ApiBackupController extends Controller
             LogService::error('api', 'Erro ao processar telemetria', [
                 'cliente_id' => $cliente['id'],
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'data' => $data
             ]);
             
-            $this->json([
+            // Em modo debug, retorna detalhes do erro
+            $config = $GLOBALS['config'] ?? [];
+            $isDebug = $config['app']['debug'] ?? false;
+            
+            $response = [
                 'success' => false,
                 'error' => 'Erro ao processar telemetria',
                 'status' => 500
-            ], 500);
+            ];
+            
+            if ($isDebug) {
+                $response['debug'] = [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ];
+            }
+            
+            $this->json($response, 500);
         }
     }
     

@@ -14,7 +14,7 @@ param(
     [string]$ConfigPath = ".\config\config.json",
     
     [Parameter(Mandatory = $false)]
-    [switch]$Verbose
+    [switch]$ShowDetails
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,7 +41,7 @@ $pingUrl = "$($config.api_url.TrimEnd('/'))/ping.php"
 try {
     $pingResponse = Invoke-WebRequest -Uri $pingUrl -Method GET -TimeoutSec 10 -UseBasicParsing
     Write-Host "  Ping OK - Status: $($pingResponse.StatusCode)" -ForegroundColor Green
-    if ($Verbose) {
+    if ($ShowDetails) {
         Write-Host "  Response: $($pingResponse.Content)" -ForegroundColor Gray
     }
 }
@@ -62,7 +62,7 @@ $headers = @{
 try {
     $statusResponse = Invoke-WebRequest -Uri $statusUrl -Method GET -Headers $headers -TimeoutSec 10 -UseBasicParsing
     Write-Host "  Auth OK - Status: $($statusResponse.StatusCode)" -ForegroundColor Green
-    if ($Verbose) {
+    if ($ShowDetails) {
         Write-Host "  Response: $($statusResponse.Content)" -ForegroundColor Gray
     }
 }
@@ -108,7 +108,7 @@ Write-Host "    host_name: $($payload.host_name)" -ForegroundColor Gray
 Write-Host "    hostname: $($payload.hostname)" -ForegroundColor Gray
 Write-Host "    ip: $($payload.ip)" -ForegroundColor Gray
 
-if ($Verbose) {
+if ($ShowDetails) {
     Write-Host ""
     Write-Host "  JSON completo:" -ForegroundColor Gray
     Write-Host $jsonBody -ForegroundColor DarkGray
