@@ -876,6 +876,11 @@ if ($execucao['data_inicio'] && $execucao['data_fim']) {
 
 <!-- Detalhes Técnicos (JSON) -->
 <?php if (!empty($detalhes)): ?>
+<?php 
+// Verifica se os dados são completos ou básicos
+$hasDetailedData = isset($detalhes['source']) || isset($detalhes['ProcessedVMs']) || isset($detalhes['backup_items']) || isset($detalhes['tipo_backup']);
+$onlyHostInfo = !$hasDetailedData && isset($detalhes['host_info']) && count($detalhes) <= 2;
+?>
 <div class="report-section">
     <div class="report-header bg-secondary">
         <div class="d-flex justify-content-between align-items-center">
@@ -887,6 +892,14 @@ if ($execucao['data_inicio'] && $execucao['data_fim']) {
     </div>
     <div class="collapse" id="technicalDetails">
         <div class="report-body">
+            <?php if ($onlyHostInfo): ?>
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Dados básicos:</strong> Esta execução foi registrada antes da atualização do agente de coleta. 
+                Para obter dados técnicos detalhados (VMs processadas, erros, warnings, repositórios, etc.), 
+                atualize o agente no servidor e execute uma nova coleta.
+            </div>
+            <?php endif; ?>
             <pre class="mb-0 bg-dark text-light p-3 rounded" style="max-height: 400px; overflow: auto;"><code><?= htmlspecialchars(json_encode($detalhes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></code></pre>
         </div>
     </div>

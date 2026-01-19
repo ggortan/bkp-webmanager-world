@@ -42,6 +42,17 @@ class ApiBackupController extends Controller
         $json = file_get_contents('php://input');
         $data = json_decode($json, true);
         
+        // Log para debug - registra o que está sendo recebido
+        LogService::api('Dados de backup recebidos', [
+            'cliente_id' => $cliente['id'],
+            'routine_key' => $data['routine_key'] ?? 'N/A',
+            'status' => $data['status'] ?? 'N/A',
+            'has_detalhes' => !empty($data['detalhes']),
+            'detalhes_keys' => is_array($data['detalhes'] ?? null) ? array_keys($data['detalhes']) : 'not_array',
+            'has_host_info' => !empty($data['host_info']),
+            'json_size' => strlen($json)
+        ]);
+        
         if (json_last_error() !== JSON_ERROR_NONE) {
             LogService::api('JSON inválido recebido', [
                 'cliente_id' => $cliente['id'],
