@@ -26,10 +26,7 @@ param(
     [switch]$RunOnce,
     
     [Parameter(Mandatory = $false)]
-    [switch]$TestMode,
-    
-    [Parameter(Mandatory = $false)]
-    [switch]$Verbose
+    [switch]$TestMode
 )
 
 #Requires -Version 5.1
