@@ -502,39 +502,66 @@ function Get-VeeamBackups {
             return $backups
         }
         
-        # Obtém jobs
-        $jobs = Get-VBRJob -ErrorAction SilentlyContinue
+        # Obtém jobs (suporta versões antigas e novas do Veeam)
+        $jobs = @()
+        try {
+            # Primeiro tenta o cmdlet novo (Veeam 12+)
+            if (Get-Command Get-VBRComputerBackupJob -ErrorAction SilentlyContinue) {
+                $jobs += Get-VBRComputerBackupJob -ErrorAction SilentlyContinue
+            }
+            # Adiciona jobs tradicionais
+            $jobs += Get-VBRJob -ErrorAction SilentlyContinue
+        }
+        catch {
+            $jobs = Get-VBRJob -ErrorAction SilentlyContinue
+        }
         
         foreach ($job in $jobs) {
-            $lastSession = $job.FindLastSession()
-            
-            if ($lastSession) {
-                $backup = @{
-                    source = 'veeam'
-                    job_name = $job.Name
-                    start_time = $lastSession.CreationTime
-                    end_time = $lastSession.EndTime
-                    status = switch ($lastSession.Result) {
-                        'Success' { 'sucesso' }
-                        'Warning' { 'alerta' }
-                        'Failed' { 'falha' }
-                        'None' { 'executando' }
-                        default { 'alerta' }
-                    }
-                    details = $lastSession.Description
-                }
+            try {
+                $lastSession = $job.FindLastSession()
                 
-                # Tenta obter tamanho
-                try {
-                    $taskSessions = $lastSession.GetTaskSessions()
-                    $totalSize = ($taskSessions | Measure-Object -Property Progress.TotalSize -Sum).Sum
-                    if ($totalSize) {
-                        $backup['size_bytes'] = $totalSize
+                if ($lastSession) {
+                    $backup = @{
+                        source = 'veeam'
+                        job_name = $job.Name
+                        start_time = $lastSession.CreationTime
+                        end_time = $lastSession.EndTime
+                        status = switch ($lastSession.Result) {
+                            'Success' { 'sucesso' }
+                            'Warning' { 'alerta' }
+                            'Failed' { 'falha' }
+                            'None' { 'executando' }
+                            default { 'alerta' }
+                        }
+                        details = $lastSession.Description
                     }
+                    
+                    # Tenta obter tamanho de várias formas
+                    try {
+                        $taskSessions = $lastSession.GetTaskSessions()
+                        if ($taskSessions) {
+                            # Tenta diferentes propriedades dependendo da versão do Veeam
+                            $totalSize = 0
+                            foreach ($task in $taskSessions) {
+                                if ($task.Progress -and $task.Progress.TotalSize) {
+                                    $totalSize += $task.Progress.TotalSize
+                                }
+                                elseif ($task.ProcessedSize) {
+                                    $totalSize += $task.ProcessedSize
+                                }
+                            }
+                            if ($totalSize -gt 0) {
+                                $backup['size_bytes'] = $totalSize
+                            }
+                        }
+                    }
+                    catch { }
+                    
+                    $backups += $backup
                 }
-                catch { }
-                
-                $backups += $backup
+            }
+            catch {
+                Write-ServiceLog "Erro ao processar job Veeam '$($job.Name)': $_" -Level DEBUG
             }
         }
     }

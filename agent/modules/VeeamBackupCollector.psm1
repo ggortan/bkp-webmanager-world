@@ -86,8 +86,21 @@ function Get-VeeamBackupJobs {
             return $backupJobs
         }
         
-        # Obtém todos os jobs de backup
-        $jobs = Get-VBRJob
+        # Obtém todos os jobs de backup (suporta versões antigas e novas do Veeam)
+        $jobs = @()
+        try {
+            # Primeiro tenta o cmdlet novo (Veeam 12+)
+            if (Get-Command Get-VBRComputerBackupJob -ErrorAction SilentlyContinue) {
+                $computerJobs = Get-VBRComputerBackupJob -ErrorAction SilentlyContinue
+                if ($computerJobs) { $jobs += $computerJobs }
+            }
+            # Adiciona jobs tradicionais (VMs, etc)
+            $standardJobs = Get-VBRJob -ErrorAction SilentlyContinue
+            if ($standardJobs) { $jobs += $standardJobs }
+        }
+        catch {
+            $jobs = Get-VBRJob -ErrorAction SilentlyContinue
+        }
         
         $startTime = (Get-Date).AddHours(-$Hours)
         
@@ -117,9 +130,24 @@ function Get-VeeamBackupJobs {
                 }
                 
                 # Coleta informações de processamento
-                $taskSessions = Get-VBRTaskSession -Session $lastSession
-                $totalSize = ($taskSessions | Measure-Object -Property ProcessedSize -Sum).Sum
-                $totalObjects = $taskSessions.Count
+                $taskSessions = @()
+                $totalSize = 0
+                $totalObjects = 0
+                
+                try {
+                    $taskSessions = Get-VBRTaskSession -Session $lastSession -ErrorAction SilentlyContinue
+                    if ($taskSessions) {
+                        $totalObjects = $taskSessions.Count
+                        foreach ($task in $taskSessions) {
+                            if ($task.ProcessedSize) {
+                                $totalSize += $task.ProcessedSize
+                            }
+                        }
+                    }
+                }
+                catch {
+                    Write-Verbose "Não foi possível obter task sessions: $_"
+                }
                 
                 # Informações de storage
                 $backupSize = 0
